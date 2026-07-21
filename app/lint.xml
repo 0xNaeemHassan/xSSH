@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!--
+      Termux's published AAR still contains an obsolete libtermux.so. xSSH replaces
+      it at package time with the NDK r28 build in :core-terminal. CI validates the
+      final APK's ELF and ZIP alignment with scripts/verify_native_alignment.py.
+      Keep Aligned16KB enabled for every other native dependency.
+    -->
+    <issue id="Aligned16KB">
+        <ignore regexp="com\.github\.termux\.termux-app:terminal-emulator" />
+    </issue>
+
+    <!--
+      This warning is in Bouncy Castle's test/utility-shaped bytecode, not an xSSH
+      TLS trust manager. SSH host verification is implemented separately in xSSH.
+    -->
+    <issue id="TrustAllX509TrustManager">
+        <ignore regexp="bcpkix-jdk18on" />
+    </issue>
+</lint>

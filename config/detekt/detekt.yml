@@ -1,0 +1,53 @@
+# Project policy layered over Detekt's defaults. Compose screen functions are
+# declarative UI trees, so method-size metrics are applied to their state and
+# transport code instead. Thresholds remain low enough to catch new outliers.
+complexity:
+  ComplexCondition:
+    threshold: 6
+  CyclomaticComplexMethod:
+    threshold: 30
+    excludes:
+      - '**/*Screen.kt'
+  LargeClass:
+    threshold: 900
+  LongMethod:
+    threshold: 150
+    excludes:
+      - '**/*Screen.kt'
+  LongParameterList:
+    functionThreshold: 8
+    constructorThreshold: 10
+    ignoreDefaultParameters: true
+  NestedBlockDepth:
+    threshold: 5
+  TooManyFunctions:
+    thresholdInFiles: 30
+    thresholdInClasses: 40
+    thresholdInInterfaces: 30
+    thresholdInObjects: 15
+    thresholdInEnums: 20
+    ignorePrivate: true
+    ignoreOverridden: true
+
+exceptions:
+  # Boundary code deliberately converts library and I/O failures into UI state.
+  # Cancellation paths are explicitly handled before these broad catches.
+  TooGenericExceptionCaught:
+    active: false
+
+naming:
+  # Kotlin requires PascalCase names for @Composable functions.
+  FunctionNaming:
+    functionPattern: '[a-zA-Z][a-zA-Z0-9]*'
+
+style:
+  # Numeric protocol bytes, key sizes, Android dimensions, and terminal escape
+  # codes dominate this app; naming every literal reduces signal rather than risk.
+  MagicNumber:
+    active: false
+  ReturnCount:
+    max: 4
+    excludeGuardClauses: true
+  ThrowsCount:
+    max: 4
+    excludeGuardClauses: true

@@ -1,0 +1,6 @@
+Initial scaffold.
+- SSH2 shell with modern ciphers
+- System-IME keyboard integration
+- Material You theming
+- Keystore-backed secret vault
+- SFTP browser and port-forwarding scaffolds

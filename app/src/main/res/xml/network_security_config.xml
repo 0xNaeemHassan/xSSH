@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  xSSH network policy:
+   - No cleartext traffic anywhere (SSH already runs over its own encrypted transport
+     via a plain TCP socket; this flag only blocks accidental HTTP by libraries).
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

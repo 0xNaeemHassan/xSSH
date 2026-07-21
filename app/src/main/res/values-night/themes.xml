@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Dark-mode variant of the Activity theme. Compose's XSshTheme drives all
+    real UI colours; this XML only decides the status/nav bar contrast and
+    the pre-Compose window background so the initial frame paints dark
+    instead of white during Activity creation.
+-->
+<resources>
+    <style name="Theme.XSsh" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+</resources>

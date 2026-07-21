@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    xSSH — launcher foreground: a stylised terminal prompt.
+
+    Layout notes:
+      • Canvas is the standard 108dp adaptive-icon square.
+      • The launcher mask keeps only the centre 72dp visible on most devices;
+        the safe zone (guaranteed visible under every mask) is the centre 66dp.
+      • The glyph is centred in a ~40dp × 20dp box within the safe zone, so
+        it renders identically under circle, squircle, and rounded-square masks.
+      • Filled paths only — vectors with strokes render inconsistently on some
+        older launchers.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- ">" chevron, thick enough to survive downscaling to 48px launcher icons. -->
+    <path
+        android:fillColor="#7CFF9E"
+        android:pathData="M40,42
+                          L64,54
+                          L40,66
+                          L40,60
+                          L52,54
+                          L40,48
+                          Z" />
+
+    <!-- Blinking-cursor underscore, sat below and right of the chevron. -->
+    <path
+        android:fillColor="#7CFF9E"
+        android:pathData="M56,64
+                          H72
+                          V70
+                          H56
+                          Z" />
+</vector>

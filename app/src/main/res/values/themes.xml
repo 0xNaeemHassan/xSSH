@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Light-mode Activity theme. Compose's XSshTheme drives the real UI palette;
+    this XML only decides the status/nav bar contrast and the pre-Compose
+    window background so the initial frame paints dark (matching the
+    terminal-first product) rather than flashing white.
+
+    Because the underlying activity background is dark, we tell the system
+    to use light-on-dark status/nav bar icons (windowLightStatusBar=false)
+    even in the "light" resource qualifier.
+-->
+<resources>
+    <style name="Theme.XSsh" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+</resources>

@@ -1,0 +1,18 @@
+xSSH third-party notices
+========================
+
+This APK contains or links the following open-source components. Exact resolved
+versions are recorded by `generateSbomLite` and `generateLicenseReportLite`.
+
+* AndroidX, Jetpack Compose, Material Icons, Dagger/Hilt, Kotlin coroutines,
+  Kotlin serialization, and Android Room — Apache License 2.0.
+* SSHJ — Apache License 2.0.
+* Termux terminal-emulator and terminal-view — Apache License 2.0.
+* The local libtermux JNI bridge in :core-terminal is derived from Termux
+  v0.118.3's termux.c and remains under the Apache License 2.0.
+* Bouncy Castle — Bouncy Castle License, an MIT-style permissive license.
+* SLF4J — MIT License.
+
+xSSH itself is distributed under the Apache License 2.0. Source origins,
+copyright headers, and the dependency catalog are included in the source
+distribution. No third-party trademark endorsement is implied.

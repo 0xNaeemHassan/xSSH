@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push: { tags: [ 'v*' ] }
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with: { distribution: 'temurin', java-version: '17' }
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Install Android SDK components
+        run: sdkmanager --install "platforms;android-36" "ndk;28.2.13676358"
+      - run: chmod +x ./gradlew
+
+      - name: Decode signing keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::Missing KEYSTORE_B64 secret"; exit 1
+          fi
+          printf '%s' "$KEYSTORE_B64" | base64 -d > release.jks
+
+      - name: Verify and build signed release
+        env:
+          ORG_GRADLE_PROJECT_android.injected.signing.store.file: ${{ github.workspace }}/release.jks
+          ORG_GRADLE_PROJECT_android.injected.signing.store.password: ${{ secrets.KEYSTORE_PASS }}
+          ORG_GRADLE_PROJECT_android.injected.signing.key.alias: ${{ secrets.KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_android.injected.signing.key.password: ${{ secrets.KEY_PASS }}
+        run: |
+          ./gradlew verifyNoTelemetry ktlintCheck detekt testDebugUnitTest \
+            :app:lintRelease :app:assembleRelease \
+            generateSbomLite generateLicenseReportLite --no-configuration-cache
+
+      - name: Generate release checksums
+        run: sha256sum app/build/outputs/apk/release/*.apk > SHA256SUMS
+
+      - name: Verify 16 KiB native compatibility
+        run: python3 scripts/verify_native_alignment.py app/build/outputs/apk/release/*.apk
+
+      - name: Stage signed release
+        uses: actions/upload-artifact@v4
+        with:
+          name: xssh-release-${{ github.ref_name }}
+          path: |
+            app/build/outputs/apk/release/*.apk
+            build/reports/sbom-lite.txt
+            build/reports/licenses-lite.txt
+            SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Shred keystore
+        if: always()
+        run: shred -uz release.jks 2>/dev/null || rm -f release.jks
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: xssh-release-${{ github.ref_name }}
+          path: release-artifacts
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-artifacts/**/*
+          fail_on_unmatched_files: true
+          generate_release_notes: true

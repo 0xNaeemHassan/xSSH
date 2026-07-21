@@ -1,0 +1,10 @@
+xSSH is a modern SSH client for Android built for people who care about their data.
+
+• Uses your phone's own keyboard — no built-in keyboard to fight with.
+• Optional slim modifier bar for Ctrl, Alt, Esc, Tab, arrows.
+• Private keys stored in Android Keystore, unlocked by biometric.
+• Modern crypto only — legacy algorithms are refused at startup.
+• Strict host-key checking. Screen-recording protection.
+• 100% free. No subscription, no ads, no analytics. Apache 2.0.
+
+Source: https://github.com/YOUR_ORG/xssh

@@ -1,0 +1,698 @@
+package com.xssh.feature.sftp
+
+import android.net.Uri
+import android.provider.OpenableColumns
+import android.text.format.DateUtils
+import android.text.format.Formatter
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.xssh.core.ssh.InteractiveHostKeyVerifier
+import com.xssh.core.ssh.SftpEntry
+import com.xssh.design.components.ChangedHostKeyDialog
+import com.xssh.design.components.DeleteConfirmationDialog
+import com.xssh.design.components.EmptyState
+import com.xssh.design.components.KeyboardInteractiveDialog
+import com.xssh.design.components.PageContainer
+import com.xssh.design.components.StatusPill
+import com.xssh.design.components.UnknownHostKeyDialog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SftpBrowserScreen(
+    connectionId: String,
+    onBack: () -> Unit,
+    vm: SftpViewModel = hiltViewModel(),
+) {
+    val state by vm.state.collectAsState()
+    val hostKeyPrompt by vm.hostKeyPrompt.collectAsState()
+    val hostKeyEvent by vm.hostKeyEvents.collectAsState()
+    val keyboardPrompt by vm.keyboardPrompt.collectAsState()
+    val overwritePrompt by vm.overwritePrompt.collectAsState()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var pendingDownload by remember { mutableStateOf<SftpEntry?>(null) }
+    var renameEntry by remember { mutableStateOf<SftpEntry?>(null) }
+    var deleteEntry by remember { mutableStateOf<SftpEntry?>(null) }
+    var showNewFolder by remember { mutableStateOf(false) }
+    var confirmEditorDiscard by rememberSaveable { mutableStateOf(false) }
+
+    val createDocument =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.CreateDocument("application/octet-stream"),
+        ) { uri: Uri? ->
+            val entry = pendingDownload
+            pendingDownload = null
+            if (uri != null && entry != null) {
+                scope.launch(Dispatchers.IO) {
+                    val output = runCatching { context.contentResolver.openOutputStream(uri) }.getOrNull()
+                    if (output == null) {
+                        runCatching { context.contentResolver.delete(uri, null, null) }
+                        vm.reportError("Unable to open the selected destination file.")
+                    } else {
+                        vm.download(entry, output) {
+                            context.contentResolver.delete(uri, null, null)
+                        }
+                    }
+                }
+            }
+        }
+
+    val openDocument =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+            uri ?: return@rememberLauncherForActivityResult
+            scope.launch(Dispatchers.IO) {
+                runCatching {
+                    val metadata = queryDocumentMetadata(context, uri)
+                    val input =
+                        context.contentResolver.openInputStream(uri)
+                            ?: error("Unable to open the selected file.")
+                    vm.upload(metadata.first, input, metadata.second)
+                }.onFailure { vm.reportError(it.message ?: "Unable to queue this upload.") }
+            }
+        }
+
+    LaunchedEffect(connectionId) { vm.attach(connectionId) }
+    DisposableEffect(connectionId) {
+        onDispose { vm.detach() }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text("SFTP files", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            state.path,
+                            style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = {
+                        vm.detach()
+                        onBack()
+                    }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = vm::goUp, enabled = state.connected && state.path != "/" && !state.loading) {
+                        Icon(Icons.Filled.ArrowUpward, contentDescription = "Parent folder")
+                    }
+                    IconButton(onClick = { showNewFolder = true }, enabled = state.connected && !state.loading) {
+                        Icon(Icons.Filled.Add, contentDescription = "New folder")
+                    }
+                    IconButton(
+                        onClick = { openDocument.launch(arrayOf("*/*")) },
+                        enabled = state.connected && !state.loading,
+                    ) {
+                        Icon(Icons.Filled.Upload, contentDescription = "Upload file")
+                    }
+                    IconButton(onClick = { vm.refresh() }, enabled = state.connected && !state.loading) {
+                        Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
+                    }
+                },
+            )
+        },
+    ) { inner ->
+        PageContainer(modifier = Modifier.fillMaxSize().padding(inner)) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (state.loading) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+
+                state.error?.let { error ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(error, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                            if (state.connected) {
+                                IconButton(onClick = vm::clearError) {
+                                    Icon(Icons.Filled.Close, contentDescription = "Dismiss error")
+                                }
+                            } else {
+                                TextButton(onClick = { vm.reconnect(connectionId) }) { Text("Retry") }
+                            }
+                        }
+                    }
+                }
+
+                state.transfer?.let { transfer ->
+                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp)) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(transfer.label, style = MaterialTheme.typography.titleSmall)
+                                    Text(
+                                        if (transfer.totalBytes > 0) {
+                                            "${Formatter.formatFileSize(
+                                                context,
+                                                transfer.bytesTransferred,
+                                            )} of ${Formatter.formatFileSize(context, transfer.totalBytes)}"
+                                        } else {
+                                            "${Formatter.formatFileSize(
+                                                context,
+                                                transfer.bytesTransferred,
+                                            )} transferred"
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
+                                TextButton(onClick = vm::cancelCurrent) { Text("Cancel") }
+                            }
+                            if (transfer.totalBytes > 0) {
+                                LinearProgressIndicator(
+                                    progress = {
+                                        (transfer.bytesTransferred.toFloat() / transfer.totalBytes).coerceIn(
+                                            0f,
+                                            1f,
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            } else {
+                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                            }
+                        }
+                    }
+                }
+
+                if (state.queue.isNotEmpty()) {
+                    TransferQueueSection(
+                        queue = state.queue,
+                        onClearEntry = vm::clearQueueEntry,
+                        onClearFinished = vm::clearFinishedQueue,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                    )
+                }
+
+                when {
+                    state.loading && state.entries.isEmpty() ->
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    state.connected && state.entries.isEmpty() && state.error == null ->
+                        EmptyState(
+                            icon = Icons.Filled.FolderOpen,
+                            title = "This folder is empty",
+                            body = "Upload a file or create a folder here.",
+                            actionLabel = "Upload file",
+                            onAction = { openDocument.launch(arrayOf("*/*")) },
+                        )
+                    state.connected ->
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            items(state.entries, key = { it.name }) { entry ->
+                                FileRow(
+                                    entry = entry,
+                                    onOpen = {
+                                        if (entry.isDir) {
+                                            vm.enter(entry.name)
+                                        } else {
+                                            pendingDownload = entry
+                                            createDocument.launch(entry.name)
+                                        }
+                                    },
+                                    onDownload = {
+                                        pendingDownload = entry
+                                        createDocument.launch(entry.name)
+                                    },
+                                    onEdit = { vm.openTextEditor(entry) },
+                                    onRename = { renameEntry = entry },
+                                    onDelete = { deleteEntry = entry },
+                                )
+                            }
+                        }
+                    else ->
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Connect to browse remote files", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                }
+            }
+        }
+    }
+
+    if (showNewFolder) {
+        NameDialog(
+            title = "New folder",
+            initial = "",
+            confirmLabel = "Create",
+            onDismiss = { showNewFolder = false },
+            onConfirm = {
+                vm.mkdir(it)
+                showNewFolder = false
+            },
+        )
+    }
+    renameEntry?.let { entry ->
+        NameDialog(
+            title = "Rename ${entry.name}",
+            initial = entry.name,
+            confirmLabel = "Rename",
+            onDismiss = { renameEntry = null },
+            onConfirm = {
+                vm.rename(entry, it)
+                renameEntry = null
+            },
+        )
+    }
+    deleteEntry?.let { entry ->
+        DeleteConfirmationDialog(
+            title = "Delete ${entry.name}?",
+            body =
+                if (entry.isDir) {
+                    "The remote folder must be empty. This cannot be undone."
+                } else {
+                    "The remote file will be permanently deleted."
+                },
+            onConfirm = {
+                vm.delete(entry)
+                deleteEntry = null
+            },
+            onDismiss = { deleteEntry = null },
+        )
+    }
+
+    state.editor?.let { editor ->
+        val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val requestEditorClose = {
+            if (editor.text != editor.originalText) confirmEditorDiscard = true else vm.closeEditor()
+        }
+        ModalBottomSheet(onDismissRequest = requestEditorClose, sheetState = sheet) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text("Quick edit", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    editor.entryName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                editor.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                OutlinedTextField(
+                    value = editor.text,
+                    onValueChange = vm::updateEditorText,
+                    label = { Text("UTF-8 text") },
+                    minLines = 12,
+                    maxLines = 20,
+                    keyboardOptions =
+                        KeyboardOptions(
+                            autoCorrectEnabled = false,
+                            keyboardType = KeyboardType.Ascii,
+                        ),
+                    textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !editor.saving,
+                )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = requestEditorClose, enabled = !editor.saving) { Text("Cancel") }
+                    TextButton(onClick = vm::saveEditor, enabled = !editor.saving) {
+                        Text(if (editor.saving) "Saving…" else "Save to server")
+                    }
+                }
+            }
+        }
+    }
+    if (confirmEditorDiscard) {
+        AlertDialog(
+            onDismissRequest = { confirmEditorDiscard = false },
+            title = { Text("Discard remote edits?") },
+            text = { Text("Your unsaved changes to this remote file will be lost.") },
+            dismissButton = {
+                TextButton(onClick = { confirmEditorDiscard = false }) { Text("Keep editing") }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmEditorDiscard = false
+                        vm.closeEditor()
+                    },
+                ) { Text("Discard") }
+            },
+        )
+    }
+
+    hostKeyPrompt?.let { unknown ->
+        UnknownHostKeyDialog(
+            hostPort = unknown.hostPort,
+            fingerprint = unknown.fingerprintSha256,
+            keyType = unknown.keyType,
+            onAccept = { vm.acceptHostKey(unknown) },
+            onReject = {
+                vm.rejectHostKey(unknown)
+                vm.detach()
+                onBack()
+            },
+        )
+    }
+    when (val event = hostKeyEvent) {
+        is InteractiveHostKeyVerifier.VerificationEvent.Changed ->
+            ChangedHostKeyDialog(
+                hostPort = state.endpoint ?: "SFTP server",
+                expected = event.expected,
+                actual = event.actual,
+                onDismiss = {
+                    vm.clearHostKeyEvent()
+                    vm.detach()
+                    onBack()
+                },
+                onForgetOldKey = { vm.forgetHostKey(event.hostPort, connectionId) },
+            )
+        InteractiveHostKeyVerifier.VerificationEvent.TimedOut ->
+            AlertDialog(
+                onDismissRequest = {
+                    vm.clearHostKeyEvent()
+                    onBack()
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        vm.clearHostKeyEvent()
+                        onBack()
+                    }) { Text("OK") }
+                },
+                title = { Text("Verification timed out") },
+                text = { Text("The fingerprint was not confirmed in time, so xSSH refused the SFTP connection.") },
+            )
+        else -> Unit
+    }
+    keyboardPrompt?.let { prompt ->
+        KeyboardInteractiveDialog(
+            prompts = prompt.prompts,
+            onSubmit = prompt::respond,
+            onCancel = {
+                prompt.cancel()
+                vm.detach()
+                onBack()
+            },
+        )
+    }
+    overwritePrompt?.let { prompt ->
+        AlertDialog(
+            onDismissRequest = prompt::cancel,
+            title = { Text("Replace remote file?") },
+            text = {
+                Text(
+                    "${prompt.name} already exists in this folder. xSSH will upload to a " +
+                        "temporary file and replace it only after the transfer succeeds.",
+                )
+            },
+            dismissButton = { TextButton(onClick = prompt::cancel) { Text("Keep existing") } },
+            confirmButton = { TextButton(onClick = prompt::replace) { Text("Replace") } },
+        )
+    }
+}
+
+@Composable
+private fun FileRow(
+    entry: SftpEntry,
+    onOpen: () -> Unit,
+    onDownload: () -> Unit,
+    onEdit: () -> Unit,
+    onRename: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val context = LocalContext.current
+    var expanded by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+            Icon(
+                if (entry.isDir) Icons.Filled.Folder else Icons.AutoMirrored.Filled.InsertDriveFile,
+                contentDescription = null,
+                tint =
+                    if (entry.isDir) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                modifier = Modifier.padding(10.dp).size(22.dp),
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(entry.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                if (entry.isDir) {
+                    "Folder"
+                } else {
+                    "${Formatter.formatFileSize(
+                        context,
+                        entry.size,
+                    )} · ${DateUtils.getRelativeTimeSpanString(entry.mtime)}"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
+        Box {
+            IconButton(onClick = { expanded = true }) {
+                Icon(Icons.Filled.MoreVert, contentDescription = "Actions for ${entry.name}")
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                if (!entry.isDir) {
+                    DropdownMenuItem(
+                        text = { Text("Download") },
+                        leadingIcon = { Icon(Icons.Filled.Download, contentDescription = null) },
+                        onClick = {
+                            expanded = false
+                            onDownload()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Quick edit") },
+                        leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                        onClick = {
+                            expanded = false
+                            onEdit()
+                        },
+                    )
+                }
+                DropdownMenuItem(
+                    text = { Text("Rename") },
+                    leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                    onClick = {
+                        expanded = false
+                        onRename()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Filled.DeleteOutline,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                    },
+                    onClick = {
+                        expanded = false
+                        onDelete()
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NameDialog(
+    title: String,
+    initial: String,
+    confirmLabel: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var value by remember(initial) { mutableStateOf(initial) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            OutlinedTextField(
+                value = value,
+                onValueChange = { value = it },
+                label = { Text("Name") },
+                singleLine = true,
+                isError = !isValidRemoteName(value),
+            )
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(value.trim()) }, enabled = isValidRemoteName(value)) {
+                Text(confirmLabel)
+            }
+        },
+    )
+}
+
+@Composable
+private fun TransferQueueSection(
+    queue: List<QueuedTransfer>,
+    onClearEntry: (String) -> Unit,
+    onClearFinished: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val finished =
+        queue.count {
+            it.status == TransferStatus.DONE ||
+                it.status == TransferStatus.FAILED ||
+                it.status == TransferStatus.CANCELLED
+        }
+    Card(modifier = modifier.fillMaxWidth(), border = CardDefaults.outlinedCardBorder()) {
+        Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Transfer queue", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                if (finished > 0) TextButton(onClick = onClearFinished) { Text("Clear finished") }
+            }
+            queue.take(4).forEach { item ->
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            item.label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        StatusPill(
+                            text = item.status.name.lowercase().replaceFirstChar { it.uppercase() },
+                            positive = item.status == TransferStatus.DONE,
+                            color =
+                                if (item.status == TransferStatus.FAILED) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    MaterialTheme.colorScheme.primary
+                                },
+                        )
+                        item.error?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                    if (item.status !in listOf(TransferStatus.RUNNING, TransferStatus.QUEUED)) {
+                        IconButton(onClick = { onClearEntry(item.id) }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Dismiss ${item.label}")
+                        }
+                    }
+                }
+            }
+            if (queue.size > 4) {
+                Text("${queue.size - 4} more queued", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+}
+
+private fun queryDocumentMetadata(
+    context: android.content.Context,
+    uri: Uri,
+): Pair<String, Long> {
+    var displayName: String? = null
+    var size = -1L
+    context.contentResolver.query(
+        uri,
+        arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE),
+        null,
+        null,
+        null,
+    )?.use { cursor ->
+        if (cursor.moveToFirst()) {
+            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+            if (nameIndex >= 0 && !cursor.isNull(nameIndex)) displayName = cursor.getString(nameIndex)
+            if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) size = cursor.getLong(sizeIndex)
+        }
+    }
+    val fallback = uri.lastPathSegment?.substringAfterLast('/')?.substringAfterLast(':')
+    return (displayName?.takeIf { it.isNotBlank() } ?: fallback ?: "upload.bin") to size
+}
+
+private fun isValidRemoteName(name: String): Boolean {
+    val trimmed = name.trim()
+    return trimmed.isNotEmpty() &&
+        trimmed != "." &&
+        trimmed != ".." &&
+        '/' !in name &&
+        '\u0000' !in name &&
+        name.toByteArray(Charsets.UTF_8).size <= 255
+}

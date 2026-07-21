@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    xSSH — adaptive launcher icon.
+
+    Background is a solid dark ink; foreground is a small vector rendering of
+    ">_" in the terminal-green accent, drawn well inside the 66dp safe zone
+    of the 108dp adaptive-icon canvas so every launcher mask (circle, squircle,
+    rounded square, teardrop) still shows the whole glyph.
+
+    A <monochrome> variant is declared so Android 13+ themed icons work
+    without leaking colour into the user's tinted launcher.
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <monochrome android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>
