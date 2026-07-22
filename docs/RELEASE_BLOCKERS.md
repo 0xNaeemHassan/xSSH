@@ -11,8 +11,9 @@ the foreground-service lifecycle. Unit tests cover the mapper, auth-mode secret
 retention, tunnel model, snippet CRUD, host-key policy, controller arithmetic,
 and Ed25519/ECDSA key generation.
 
-What remains is device-verification work: build the release APK, exercise it
-on API 31/33/35/36 physical devices, and close the remaining P0 items below.
+What remains is device-verification work: exercise the signed release candidate
+on API 31/33/35/36 physical devices and close the remaining hardware/network P0
+items below.
 
 ## P0 — cannot ship without these
 
@@ -23,13 +24,14 @@ themed monochrome) shipped in `res/`.
 - [x] Commit a verified `gradle-wrapper.jar` and wrapper checksum (`gradle-wrapper.jar.sha256` + `distributionSha256Sum`).
 - [x] Build `assembleDebug` under JDK 17 + Android SDK 36.
 - [x] Build minified `assembleRelease` under JDK 17 + Android SDK 36.
-- [ ] Sign a release candidate with the user-controlled production keystore.
+- [x] Sign a release candidate with a user-controlled EC production keystore
+kept outside version control; unsigned release packaging now fails closed.
 - [ ] Install on API 31, 33, 35, and 36 physical devices.
 - [x] Add generated SBOM and license-report tasks plus packaged third-party notices.
 - [x] Verify all packaged native ABIs have 16 KiB ELF and ZIP alignment.
 
 **Acceptance:** an APK installs, launches, and passes basic smoke tests on all
-three API levels.
+four API levels.
 
 ### 2. Real terminal engine
 
@@ -83,7 +85,8 @@ or exported files, on both StrongBox and non-StrongBox devices.
 - [x] Snippets and tunnel definitions persist through `SnippetDao` and
 `TunnelDao`.
 - [x] `lastUsedEpochMs` bumped on connect (opt-out via `ephemeral = true`).
-- [ ] Schema-migration test suite (currently `fallbackToDestructiveMigrationOnDowngrade`; a proper up-migration test is still owed).
+- [x] Versioned non-destructive Room v1→v2 migration plus an instrumentation
+test that validates the schema and preserves an existing profile.
 - [ ] Force-stop / reboot smoke test on a real device.
 
 **Acceptance:** force-stop/reboot preserves profiles without storing plaintext
@@ -97,9 +100,12 @@ credentials.
 - [x] SAF pick-document / create-document integration in `SftpBrowserScreen`.
 - [x] Cancellable queued transfer pipeline with visible queue state,
 cancel-current, and clear-finished actions.
-- [ ] Retry failed transfers and persist queue state across process death.
+- [x] Retry failed/cancelled transfers and persist URI-backed queue state across
+process death, with interrupted jobs restored as explicit retryable failures.
 - [x] In-app quick edit for bounded-size strict UTF-8 text files with explicit overwrite.
-- [ ] External-editor temp-file workflow and persistent retry queue.
+- [x] External-editor temp-file workflow with scoped `FileProvider` access,
+SHA-256 remote-change conflict detection, bounded files, cleanup, explicit
+grant revocation, rotation-safe launch state, and explicit upload/discard.
 
 **Acceptance:** transfer 1 GB file on Wi-Fi, cancel at 50%, resume/retry and
 verify SHA-256 checksum.

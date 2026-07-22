@@ -114,6 +114,20 @@ gradle wrapper --gradle-version 8.13 --distribution-type all
 python3 scripts/verify_native_alignment.py app/build/outputs/apk/debug/app-debug.apk
 ```
 
+For a locally signed release on Windows, provision the key once, back up the
+generated keystore and credentials, then build the Release variant in Android
+Studio or from PowerShell:
+
+```powershell
+.\scripts\provision-release-signing.ps1
+.\gradlew.bat :app:assembleRelease
+python .\scripts\verify_native_alignment.py .\app\build\outputs\apk\release\app-release.apk
+```
+
+The provisioner refuses to replace an existing key. The keystore and its
+credentials remain ignored by Git; CI continues to use injected repository
+secrets.
+
 ## Testing
 
 Every feature module ships JVM unit tests. Coverage highlights:

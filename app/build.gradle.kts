@@ -1,12 +1,63 @@
 /*
  * xSSH — :app module
  */
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+}
+
+val localProperties =
+    Properties().apply {
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.isFile) {
+            localPropertiesFile.inputStream().use { load(it) }
+        }
+    }
+
+fun releaseSigningValue(
+    injectedProperty: String,
+    localProperty: String,
+): String? =
+    providers.gradleProperty(injectedProperty).orNull
+        ?.takeIf { it.isNotBlank() }
+        ?: localProperties.getProperty(localProperty)?.takeIf { it.isNotBlank() }
+
+val releaseStoreFile =
+    releaseSigningValue(
+        "android.injected.signing.store.file",
+        "xssh.signing.storeFile",
+    )
+val releaseStorePassword =
+    releaseSigningValue(
+        "android.injected.signing.store.password",
+        "xssh.signing.storePassword",
+    )
+val releaseKeyAlias =
+    releaseSigningValue(
+        "android.injected.signing.key.alias",
+        "xssh.signing.keyAlias",
+    )
+val releaseKeyPassword =
+    releaseSigningValue(
+        "android.injected.signing.key.password",
+        "xssh.signing.keyPassword",
+    )
+val releaseSigningValues =
+    listOf(
+        releaseStoreFile,
+        releaseStorePassword,
+        releaseKeyAlias,
+        releaseKeyPassword,
+    )
+val hasReleaseSigning = releaseSigningValues.all { it != null }
+
+check(releaseSigningValues.none { it != null } || hasReleaseSigning) {
+    "Release signing is only partially configured. Provide store file, store password, key alias, and key password."
 }
 
 android {
@@ -24,6 +75,22 @@ android {
         vectorDrawables.useSupportLibrary = true
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile =
+                rootProject.file(
+                    releaseStoreFile ?: "keystore/RELEASE_SIGNING_NOT_CONFIGURED",
+                )
+            storePassword = releaseStorePassword ?: "not-configured"
+            keyAlias = releaseKeyAlias ?: "not-configured"
+            keyPassword = releaseKeyPassword ?: "not-configured"
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = true
+            enableV4Signing = true
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
@@ -36,7 +103,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            // Signing config is intentionally omitted — supply via ~/.gradle or CI secrets.
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 

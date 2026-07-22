@@ -26,6 +26,7 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
     ksp(libs.hilt.compiler)
     implementation(project(":core-ssh"))
+    implementation(project(":core-data"))
     implementation(project(":design-system"))
     implementation(project(":feature-connections"))
 }

@@ -9,10 +9,12 @@ package com.xssh.core.data.di
 
 import android.content.Context
 import androidx.room.Room
+import com.xssh.core.data.MIGRATION_1_2
 import com.xssh.core.data.RoomKnownHostStore
 import com.xssh.core.data.XSshDatabase
 import com.xssh.core.data.dao.ConnectionDao
 import com.xssh.core.data.dao.KnownHostDao
+import com.xssh.core.data.dao.SftpTransferDao
 import com.xssh.core.data.dao.SnippetDao
 import com.xssh.core.data.dao.TunnelDao
 import com.xssh.core.ssh.KnownHostStore
@@ -33,6 +35,7 @@ object DataModule {
         @ApplicationContext ctx: Context,
     ): XSshDatabase =
         Room.databaseBuilder(ctx, XSshDatabase::class.java, "xssh.db")
+            .addMigrations(MIGRATION_1_2)
             // Non-destructive migrations only. Downgrades wipe (dev), never
             // silently drop on forward migrations.
             .fallbackToDestructiveMigrationOnDowngrade()
@@ -45,6 +48,8 @@ object DataModule {
     @Provides fun tunnelDao(db: XSshDatabase): TunnelDao = db.tunnelDao()
 
     @Provides fun snippetDao(db: XSshDatabase): SnippetDao = db.snippetDao()
+
+    @Provides fun sftpTransferDao(db: XSshDatabase): SftpTransferDao = db.sftpTransferDao()
 }
 
 @Module

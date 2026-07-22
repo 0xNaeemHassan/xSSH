@@ -1,5 +1,7 @@
 package com.xssh.feature.sftp
 
+import android.content.ClipData
+import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.text.format.DateUtils
@@ -68,6 +70,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.xssh.core.ssh.InteractiveHostKeyVerifier
 import com.xssh.core.ssh.SftpEntry
@@ -80,6 +83,7 @@ import com.xssh.design.components.StatusPill
 import com.xssh.design.components.UnknownHostKeyDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -108,17 +112,7 @@ fun SftpBrowserScreen(
             val entry = pendingDownload
             pendingDownload = null
             if (uri != null && entry != null) {
-                scope.launch(Dispatchers.IO) {
-                    val output = runCatching { context.contentResolver.openOutputStream(uri) }.getOrNull()
-                    if (output == null) {
-                        runCatching { context.contentResolver.delete(uri, null, null) }
-                        vm.reportError("Unable to open the selected destination file.")
-                    } else {
-                        vm.download(entry, output) {
-                            context.contentResolver.delete(uri, null, null)
-                        }
-                    }
-                }
+                vm.download(entry, uri)
             }
         }
 
@@ -128,13 +122,36 @@ fun SftpBrowserScreen(
             scope.launch(Dispatchers.IO) {
                 runCatching {
                     val metadata = queryDocumentMetadata(context, uri)
-                    val input =
-                        context.contentResolver.openInputStream(uri)
-                            ?: error("Unable to open the selected file.")
-                    vm.upload(metadata.first, input, metadata.second)
+                    vm.upload(metadata.first, uri, metadata.second)
                 }.onFailure { vm.reportError(it.message ?: "Unable to queue this upload.") }
             }
         }
+
+    val externalEditorLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            vm.externalEditorReturned()
+        }
+    LaunchedEffect(state.externalEditor?.localPath) {
+        val edit = state.externalEditor ?: return@LaunchedEffect
+        if (edit.returned || edit.launched) return@LaunchedEffect
+        runCatching {
+            val uri =
+                FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    File(edit.localPath),
+                )
+            val intent =
+                Intent(Intent.ACTION_EDIT)
+                    .setDataAndType(uri, "text/plain")
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                    .apply { clipData = ClipData.newRawUri(edit.entryName, uri) }
+            vm.externalEditorLaunched()
+            externalEditorLauncher.launch(Intent.createChooser(intent, "Edit ${edit.entryName}"))
+        }.onFailure { failure ->
+            vm.externalEditorLaunchFailed(failure.message ?: "No compatible external editor is installed.")
+        }
+    }
 
     LaunchedEffect(connectionId) { vm.attach(connectionId) }
     DisposableEffect(connectionId) {
@@ -186,7 +203,9 @@ fun SftpBrowserScreen(
     ) { inner ->
         PageContainer(modifier = Modifier.fillMaxSize().padding(inner)) {
             Column(modifier = Modifier.fillMaxSize()) {
-                if (state.loading) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                if (state.loading || state.externalEditorPreparing) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
 
                 state.error?.let { error ->
                     Card(
@@ -256,6 +275,7 @@ fun SftpBrowserScreen(
                 if (state.queue.isNotEmpty()) {
                     TransferQueueSection(
                         queue = state.queue,
+                        onRetry = vm::retryTransfer,
                         onClearEntry = vm::clearQueueEntry,
                         onClearFinished = vm::clearFinishedQueue,
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
@@ -293,6 +313,7 @@ fun SftpBrowserScreen(
                                         createDocument.launch(entry.name)
                                     },
                                     onEdit = { vm.openTextEditor(entry) },
+                                    onExternalEdit = { vm.prepareExternalEditor(entry) },
                                     onRename = { renameEntry = entry },
                                     onDelete = { deleteEntry = entry },
                                 )
@@ -408,6 +429,34 @@ fun SftpBrowserScreen(
         )
     }
 
+    state.externalEditor?.takeIf { it.returned }?.let { edit ->
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text("Save external edits?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Upload the edited copy of ${edit.entryName} back to the server?")
+                    Text(
+                        "xSSH will refuse to overwrite the remote file if it changed while the editor was open.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    edit.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = vm::discardExternalEdit, enabled = !edit.saving) {
+                    Text("Discard local copy")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = vm::saveExternalEdit, enabled = !edit.saving) {
+                    Text(if (edit.saving) "Uploading…" else "Save to server")
+                }
+            },
+        )
+    }
+
     hostKeyPrompt?.let { unknown ->
         UnknownHostKeyDialog(
             hostPort = unknown.hostPort,
@@ -484,6 +533,7 @@ private fun FileRow(
     onOpen: () -> Unit,
     onDownload: () -> Unit,
     onEdit: () -> Unit,
+    onExternalEdit: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -543,6 +593,14 @@ private fun FileRow(
                         onClick = {
                             expanded = false
                             onEdit()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Edit in another app") },
+                        leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                        onClick = {
+                            expanded = false
+                            onExternalEdit()
                         },
                     )
                 }
@@ -606,6 +664,7 @@ private fun NameDialog(
 @Composable
 private fun TransferQueueSection(
     queue: List<QueuedTransfer>,
+    onRetry: (String) -> Unit,
     onClearEntry: (String) -> Unit,
     onClearFinished: () -> Unit,
     modifier: Modifier = Modifier,
@@ -648,6 +707,9 @@ private fun TransferQueueSection(
                                 color = MaterialTheme.colorScheme.error,
                             )
                         }
+                    }
+                    if (item.status in listOf(TransferStatus.FAILED, TransferStatus.CANCELLED)) {
+                        TextButton(onClick = { onRetry(item.id) }) { Text("Retry") }
                     }
                     if (item.status !in listOf(TransferStatus.RUNNING, TransferStatus.QUEUED)) {
                         IconButton(onClick = { onClearEntry(item.id) }) {

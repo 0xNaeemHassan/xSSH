@@ -7,17 +7,17 @@ and attach evidence in the format from [`TEST_EVIDENCE_TEMPLATE.md`](TEST_EVIDEN
 ## 1. Build provenance
 
 - [ ] Fresh checkout from the intended release commit.
-- [ ] JDK 17 selected.
-- [ ] Android SDK Platform 36 and NDK 28.2.13676358 installed.
-- [ ] `./gradlew verifyNoTelemetry --no-configuration-cache`
-- [ ] `./gradlew ktlintCheck detekt`
-- [ ] `./gradlew testDebugUnitTest`
-- [ ] `./gradlew :app:assembleDebug`
-- [ ] `./gradlew :app:assembleRelease`
-- [ ] `python3 scripts/verify_native_alignment.py app/build/outputs/apk/release/app-release.apk`
-- [ ] `./gradlew generateSbomLite generateLicenseReportLite --no-configuration-cache`
-- [ ] Release APK signed with a user-controlled keystore that is not stored in the repo.
-- [ ] SHA-256 of the release artifact recorded.
+- [x] JDK 17 selected.
+- [x] Android SDK Platform 36 and NDK 28.2.13676358 installed.
+- [x] `./gradlew verifyNoTelemetry --no-configuration-cache`
+- [x] `./gradlew ktlintCheck detekt`
+- [x] `./gradlew testDebugUnitTest`
+- [x] `./gradlew :app:assembleDebug`
+- [x] `./gradlew :app:assembleRelease`
+- [x] `python3 scripts/verify_native_alignment.py app/build/outputs/apk/release/app-release.apk`
+- [x] `./gradlew generateSbomLite generateLicenseReportLite --no-configuration-cache`
+- [x] Release APK signed with a user-controlled keystore that is not stored in the repo.
+- [x] SHA-256 of the release artifact recorded.
 
 ## 2. Security gates
 

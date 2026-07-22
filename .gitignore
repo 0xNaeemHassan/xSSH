@@ -11,7 +11,7 @@
 *.apk
 *.aab
 /release
-/keystore
+/keystore/*
 *.jks
 *.keystore
 !/keystore/README.md
