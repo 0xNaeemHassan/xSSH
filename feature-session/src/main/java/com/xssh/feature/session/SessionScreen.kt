@@ -231,6 +231,7 @@ fun SessionScreen(
                         when (key) {
                             SpecialKey.CTRL_TOGGLE -> vm.toggleCtrl()
                             SpecialKey.ALT_TOGGLE -> vm.toggleAlt()
+                            SpecialKey.PASTE -> vm.pasteFromClipboard(context)
                             else -> vm.writeSpecial(key)
                         }
                     },

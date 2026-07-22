@@ -62,7 +62,16 @@ fun TerminalHost(
     }
 
     AndroidView(
-        factory = { view },
+        factory = {
+            view.isFocusable = true
+            view.isFocusableInTouchMode = true
+            view.requestFocus()
+            view.post {
+                val input = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+                input?.showSoftInput(view, 0)
+            }
+            view
+        },
         modifier = modifier.background(Color(0xFF0B0F14)),
         update = { it.attachSession(session) },
     )
@@ -156,6 +165,10 @@ private fun buildTerminalView(
     fontSizeSp: Int,
 ): TerminalView {
     val view = TerminalView(context, null)
+    view.isFocusable = true
+    view.isFocusableInTouchMode = true
+    view.isClickable = true
+    view.isLongClickable = true
     val scaledDensity = context.resources.displayMetrics.density * context.resources.configuration.fontScale
     var textSizePx = (fontSizeSp * scaledDensity).roundToInt()
     view.setTextSize(textSizePx)
@@ -189,9 +202,13 @@ private fun buildTerminalView(
             }
 
             override fun onSingleTapUp(e: MotionEvent) {
-                view.requestFocus()
-                val input = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-                input.showSoftInput(view, InputMethodManager.SHOW_IMPLICIT)
+                if (view.isSelectingText) {
+                    view.stopTextSelectionMode()
+                } else {
+                    view.requestFocus()
+                    val input = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+                    input?.showSoftInput(view, 0)
+                }
             }
 
             override fun shouldBackButtonBeMappedToEscape(): Boolean = false
@@ -253,7 +270,10 @@ private fun buildTerminalView(
                 e: KeyEvent,
             ): Boolean = false
 
-            override fun onLongPress(e: MotionEvent): Boolean = false
+            override fun onLongPress(e: MotionEvent): Boolean {
+                view.startTextSelectionMode(e)
+                return true
+            }
 
             override fun readControlKey(): Boolean = false
 

@@ -37,6 +37,7 @@ enum class SpecialKey {
     TAB,
     CTRL_TOGGLE,
     ALT_TOGGLE,
+    PASTE,
     UP,
     DOWN,
     LEFT,
@@ -67,7 +68,7 @@ fun SpecialKey.toBytes(): ByteArray =
         SpecialKey.SLASH -> "/".toByteArray()
         SpecialKey.DASH -> "-".toByteArray()
         SpecialKey.TILDE -> "~".toByteArray()
-        SpecialKey.CTRL_TOGGLE, SpecialKey.ALT_TOGGLE -> ByteArray(0)
+        SpecialKey.CTRL_TOGGLE, SpecialKey.ALT_TOGGLE, SpecialKey.PASTE -> ByteArray(0)
     }
 
 fun SpecialKey.toBytes(
@@ -126,6 +127,7 @@ private val BAR_KEYS: List<Pair<String, SpecialKey>> =
         "Tab" to SpecialKey.TAB,
         "Ctrl" to SpecialKey.CTRL_TOGGLE,
         "Alt" to SpecialKey.ALT_TOGGLE,
+        "Paste" to SpecialKey.PASTE,
         "↑" to SpecialKey.UP,
         "↓" to SpecialKey.DOWN,
         "←" to SpecialKey.LEFT,
