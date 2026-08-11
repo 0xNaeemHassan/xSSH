@@ -13,6 +13,7 @@
  */
 package com.xssh.core.terminal
 
+import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.termux.terminal.KeyHandler
@@ -169,18 +171,22 @@ fun ModifierBar(
     onKey: (SpecialKey) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val view = LocalView.current
     LazyRow(
         modifier = modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 3.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        items(count = BAR_KEYS.size) { i ->
+        items(count = BAR_KEYS.size, key = { BAR_KEYS[it].first }) { i ->
             val (label, code) = BAR_KEYS[i]
             val selected =
                 (code == SpecialKey.CTRL_TOGGLE && ctrlArmed) ||
                     (code == SpecialKey.ALT_TOGGLE && altArmed)
             FilterChip(
                 selected = selected,
-                onClick = { onKey(code) },
+                onClick = {
+                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                    onKey(code)
+                },
                 label = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,

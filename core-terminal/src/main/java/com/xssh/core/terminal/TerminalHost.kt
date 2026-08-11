@@ -19,6 +19,7 @@ import android.view.HapticFeedbackConstants
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import android.view.MotionEvent
+import android.view.View
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
@@ -65,6 +66,7 @@ fun TerminalHost(
         factory = {
             view.isFocusable = true
             view.isFocusableInTouchMode = true
+            view.setLayerType(View.LAYER_TYPE_HARDWARE, null)
             view.requestFocus()
             view.post {
                 val input = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
@@ -169,6 +171,7 @@ private fun buildTerminalView(
     view.isFocusableInTouchMode = true
     view.isClickable = true
     view.isLongClickable = true
+    view.setLayerType(View.LAYER_TYPE_HARDWARE, null)
     val scaledDensity = context.resources.displayMetrics.density * context.resources.configuration.fontScale
     var textSizePx = (fontSizeSp * scaledDensity).roundToInt()
     view.setTextSize(textSizePx)
@@ -271,6 +274,7 @@ private fun buildTerminalView(
             ): Boolean = false
 
             override fun onLongPress(e: MotionEvent): Boolean {
+                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                 view.startTextSelectionMode(e)
                 return true
             }

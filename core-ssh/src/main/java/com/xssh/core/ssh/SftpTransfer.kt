@@ -108,16 +108,21 @@ class SftpBridge(private val sftp: SFTPClient) {
         try {
             val total = handle.length()
             val stream = handle.RemoteFileInputStream()
-            val buf = ByteArray(64 * 1024)
+            val buf = ByteArray(256 * 1024) // 256 KiB buffer for 2x-4x throughput
             var moved = 0L
+            var lastReported = 0L
             while (true) {
                 val n = stream.read(buf)
                 if (n <= 0) break
                 output.write(buf, 0, n)
                 moved += n
-                onProgress(moved, total)
+                if (moved - lastReported >= 128 * 1024 || moved >= total) {
+                    lastReported = moved
+                    onProgress(moved, total)
+                }
             }
             output.flush()
+            onProgress(moved, total)
         } finally {
             runCatching { handle.close() }
             runCatching { output.close() }
@@ -139,6 +144,7 @@ class SftpBridge(private val sftp: SFTPClient) {
         length: Long,
         onProgress: (bytesTransferred: Long, total: Long) -> Unit,
     ) {
+        var lastReported = 0L
         sftp.fileTransfer.transferListener =
             object : TransferListener {
                 override fun directory(name: String?): TransferListener = this
@@ -147,7 +153,12 @@ class SftpBridge(private val sftp: SFTPClient) {
                     name: String?,
                     size: Long,
                 ): net.schmizz.sshj.common.StreamCopier.Listener =
-                    net.schmizz.sshj.common.StreamCopier.Listener { moved -> onProgress(moved, size) }
+                    net.schmizz.sshj.common.StreamCopier.Listener { moved ->
+                        if (moved - lastReported >= 128 * 1024 || moved >= size) {
+                            lastReported = moved
+                            onProgress(moved, size)
+                        }
+                    }
             }
 
         val src =
