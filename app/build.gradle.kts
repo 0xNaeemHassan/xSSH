@@ -76,18 +76,17 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            storeFile =
-                rootProject.file(
-                    releaseStoreFile ?: "keystore/RELEASE_SIGNING_NOT_CONFIGURED",
-                )
-            storePassword = releaseStorePassword ?: "not-configured"
-            keyAlias = releaseKeyAlias ?: "not-configured"
-            keyPassword = releaseKeyPassword ?: "not-configured"
-            enableV1Signing = true
-            enableV2Signing = true
-            enableV3Signing = true
-            enableV4Signing = true
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = rootProject.file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+                enableV4Signing = true
+            }
         }
     }
 
@@ -103,7 +102,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig =
+                if (hasReleaseSigning) {
+                    signingConfigs.getByName("release")
+                } else {
+                    signingConfigs.getByName("debug")
+                }
         }
     }
 
