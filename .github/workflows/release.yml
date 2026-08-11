@@ -38,8 +38,8 @@ jobs:
       - name: Generate release checksums
         run: |
           mkdir -p release_out
-          cp app/build/outputs/apk/release/*.apk release_out/xSSH-v0.1.0-release.apk
-          cp app/build/outputs/apk/debug/*.apk release_out/xSSH-v0.1.0-debug.apk
+          cp app/build/outputs/apk/release/*.apk release_out/xSSH-${{ github.ref_name }}-release.apk
+          cp app/build/outputs/apk/debug/*.apk release_out/xSSH-${{ github.ref_name }}-debug.apk
           sha256sum release_out/*.apk > release_out/SHA256SUMS
 
       - name: Verify 16 KiB native compatibility
