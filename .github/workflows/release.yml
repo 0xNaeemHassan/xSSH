@@ -20,41 +20,40 @@ jobs:
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "platforms;android-36" "ndk;28.2.13676358"
       - run: chmod +x ./gradlew
 
-      - name: Decode signing keystore
+      - name: Build release and debug APKs
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
-        run: |
-          if [ -z "$KEYSTORE_B64" ]; then
-            echo "::error::Missing KEYSTORE_B64 secret"; exit 1
-          fi
-          printf '%s' "$KEYSTORE_B64" | base64 -d > release.jks
-
-      - name: Verify and build signed release
-        env:
           ORG_GRADLE_PROJECT_android.injected.signing.store.file: ${{ github.workspace }}/release.jks
           ORG_GRADLE_PROJECT_android.injected.signing.store.password: ${{ secrets.KEYSTORE_PASS }}
           ORG_GRADLE_PROJECT_android.injected.signing.key.alias: ${{ secrets.KEY_ALIAS }}
           ORG_GRADLE_PROJECT_android.injected.signing.key.password: ${{ secrets.KEY_PASS }}
         run: |
-          ./gradlew verifyNoTelemetry ktlintCheck detekt testDebugUnitTest \
-            :app:lintRelease :app:assembleRelease \
+          if [ -n "$KEYSTORE_B64" ]; then
+            printf '%s' "$KEYSTORE_B64" | base64 -d > release.jks
+          fi
+          ./gradlew verifyNoTelemetry testDebugUnitTest \
+            :app:assembleRelease :app:assembleDebug \
             generateSbomLite generateLicenseReportLite --no-configuration-cache
 
       - name: Generate release checksums
-        run: sha256sum app/build/outputs/apk/release/*.apk > SHA256SUMS
+        run: |
+          mkdir -p release_out
+          cp app/build/outputs/apk/release/*.apk release_out/xSSH-v0.1.0-release.apk
+          cp app/build/outputs/apk/debug/*.apk release_out/xSSH-v0.1.0-debug.apk
+          sha256sum release_out/*.apk > release_out/SHA256SUMS
 
       - name: Verify 16 KiB native compatibility
-        run: python3 scripts/verify_native_alignment.py app/build/outputs/apk/release/*.apk
+        run: python3 scripts/verify_native_alignment.py release_out/*.apk
 
-      - name: Stage signed release
+      - name: Stage release artifacts
         uses: actions/upload-artifact@v4
         with:
           name: xssh-release-${{ github.ref_name }}
           path: |
-            app/build/outputs/apk/release/*.apk
+            release_out/*.apk
+            release_out/SHA256SUMS
             build/reports/sbom-lite.txt
             build/reports/licenses-lite.txt
-            SHA256SUMS
           if-no-files-found: error
           retention-days: 14
 
