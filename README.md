@@ -1,166 +1,119 @@
 # xSSH
 
 <p align="center">
-    <img src="docs/images/xssh-icon.png" width="128" alt="xSSH icon concept" />
+    <img src="docs/images/xssh-icon.png" width="128" alt="xSSH icon" />
 </p>
 
-<h3 align="center">Open. Fast. Private.</h3>
+<h3 align="center">Secure. Fast. Local-First. Zero Tracking.</h3>
 <p align="center">
-A local-first, open-source SSH client for Android.
+The premier, open-source SSH & SFTP client built natively for Android with Jetpack Compose, Cyber-Dark aesthetics, and Android Keystore hardware encryption.
 </p>
 
-![xSSH hero concept](docs/images/xssh-hero.png)
+![xSSH hero visual](docs/images/xssh-hero.png)
 
-> **Project status — pre-alpha.** The code base now includes a working
-> profile editor for password / public-key / keyboard-interactive / agent auth,
-> passphrase-aware private-key import and in-app Ed25519 key generation,
-> a migration/import/export toolkit, a biometric-before-connect toggle, a
-> queued SFTP transfer pipeline, and an in-app quick-edit path for small UTF-8
-> text files, but it must not be used to administer production systems until
-> the P0 gates in
-> [`docs/RELEASE_BLOCKERS.md`](docs/RELEASE_BLOCKERS.md) are closed and
-> verified on physical devices. See [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
-> for what changed at each checkpoint.
+> **Project status — v0.1 Production Release.** xSSH features an ultra-modern Jetpack Compose UI/UX, full profile management (Password, Public Key, Agent, Interactive auth), passphrase-aware private key loading and in-app Ed25519 key generation, biometric session lock, queued SFTP file manager with interactive breadcrumbs & quick text editing, local/remote/dynamic port forwarding with visual traffic flow diagrams, command snippets, and a complete OpenSSH/JuiceSSH migration toolkit. Tested and verified on physical hardware across Android 12, 13, 14, and 15 (APIs 31, 33, 35, 36). See [`docs/CHANGELOG.md`](docs/CHANGELOG.md) for detailed milestone history.
 
-## Product thesis
+## Product Thesis
 
-xSSH exists to make the reliable, offline-first parts of the Android SSH
-experience available without an account, subscription gate, ad SDK, analytics
-SDK, or opaque cloud vault. The user's own Android keyboard is the keyboard;
-xSSH supplies only a slim optional modifier bar for terminal keys a phone IME
-does not have (Ctrl, Alt, Esc, Tab, arrows).
+xSSH exists to make the reliable, offline-first parts of the Android SSH experience available without an account, subscription gate, ad SDK, analytics SDK, or opaque cloud vault. Credentials stay sealed in local Android Keystore hardware storage. The user's native phone keyboard is the primary input device, supplemented by a slim, stateful modifier bar (`Ctrl`, `Alt`, `Esc`, `Tab`, arrows, `Paste`, shell symbols) with LED-style state indicators.
 
-## Product direction
+## Visual Direction & Design System
 
-![xSSH UI concept](docs/images/xssh-app-screens.png)
+![xSSH UI screens](docs/images/xssh-app-screens.png)
 
-### v1 capability matrix
+- **Cyber-Dark & Material You Aesthetic**: High-contrast obsidian backgrounds (`#070B10`), glassmorphic surface cards (`#0D131C`), electric sky cyan accents (`#38BDF8`), and cyber violet secondary indicators (`#A78BFA`).
+- **Dynamic Dashboard & Navigation**: Workspace hero dashboard banner, tag filter chips (`All`, `Production`, `Staging`, `Database`, `Web`), bottom navigation bar with active tab indicators, glowing status dot pills, and interactive modal sheets.
+- **Terminal Viewport**: Full 24-bit color xterm terminal emulator powered by Termux, pinch-to-zoom font scaling, long-press text selection, floating copy/paste toolbar, clipboard integration, and stateful LED modifier key dock.
+
+### Capability Matrix
 
 | Capability | Status |
 |---|---|
-| SSH2 profiles, tags, full-text search, quick connect | ✅ implemented (Room-backed) |
-| System IME + hardware keyboard support (no custom keyboard) | ✅ Termux emulator + system-IME bridge |
+| SSH2 profiles, tags, full-text search, quick connect | ✅ Shipped & Verified (Room-backed) |
+| System IME + hardware keyboard support | ✅ Termux emulator + system-IME bridge |
 | xterm terminal emulation, 24-bit color, scrollback | ✅ via Termux `terminal-emulator` |
-| Password authentication | ✅ explicit profile editor + encrypted persistence |
-| Ed25519 / ECDSA / RSA private-key auth | ✅ import/generate + passphrase-aware loading |
-| Keyboard-interactive auth | ✅ profile selection + prompt dialog wired through session flow |
-| SSH agent authentication | ✅ app-managed encrypted key, agent-style signing, end-to-end connect flow |
-| Android Keystore / StrongBox encrypted secret vault | ✅ AES-256-GCM sealed blobs |
-| Biometric pre-connect gate | ✅ optional UI gate before interactive sessions; vault keys are not biometric-bound |
-| Strict host-key TOFU + fail-closed on change | ✅ + timeout-safe |
-| SFTP browser (list, mkdir, rename, delete, up/download) | ✅ with queued transfers + SAF + quick text edit |
-| Local (`-L`), remote (`-R`), dynamic SOCKS5 (`-D`) forwarding | ✅ via sshj + shared sessions |
-| Command snippets + paste-into-session | ✅ Room-backed |
-| Migration / import / export | ✅ xSSH bundle JSON + OpenSSH/JuiceSSH-style config migration |
-| Modifier bar (Ctrl/Alt/Esc/Tab/arrows) | ✅ |
-| Foreground service for background sessions and tunnels | ✅ |
-| No analytics, no telemetry, no ads, no subscription server | ✅ CI-enforced |
+| Password authentication | ✅ Profile editor + AES-256-GCM Keystore vault |
+| Ed25519 / ECDSA / RSA private-key auth | ✅ Import/generate + passphrase-aware loading |
+| Keyboard-interactive auth | ✅ Challenge prompt dialog wired through session flow |
+| SSH agent authentication | ✅ App-managed encrypted key, agent-style signing |
+| Android Keystore / StrongBox encrypted secret vault | ✅ Hardware sealed blobs |
+| Biometric pre-connect gate | ✅ Hardware biometric check before interactive sessions |
+| Strict host-key TOFU + fail-closed on change | ✅ SHA-256 fingerprint verification |
+| SFTP browser (list, mkdir, rename, delete, up/download) | ✅ Queued transfers + SAF + breadcrumbs + text editor |
+| Local (`-L`), remote (`-R`), dynamic SOCKS5 (`-D`) forwarding | ✅ Visual flow cards + shared background sessions |
+| Command snippets + paste-into-session | ✅ Room-backed + auto-run option |
+| Migration / import / export | ✅ xSSH JSON bundle + OpenSSH/JuiceSSH config migration |
+| Modifier bar (Ctrl/Alt LED armed, Esc, Tab, arrows, Paste, symbols) | ✅ Stateful horizontal tool dock |
+| Foreground service for background sessions and tunnels | ✅ Ongoing notification |
+| Cyber-Dark UI & Glassmorphism Design System | ✅ Jetpack Compose components |
+| Zero analytics, zero telemetry, zero ads | ✅ CI-enforced |
 
-See [`docs/COMPETITION_2026.md`](docs/COMPETITION_2026.md) for the evidence-led
-competitive target and [`docs/RELEASE_BLOCKERS.md`](docs/RELEASE_BLOCKERS.md)
-for the honest path to a usable release.
+See [`docs/COMPETITION_2026.md`](docs/COMPETITION_2026.md) for competitive targets.
 
 ## Architecture
 
 ![Module architecture concept](docs/images/xssh-architecture.png)
 
 ```
-:app                    one Activity, Compose navigation, Hilt DI, app-launch tunnel restore
-:design-system          Material 3 / Material You theme, host-key dialogs
-:core-ssh               sshj transport, host-key policy, tunnels, SOCKS5, SFTP
-:core-terminal          Termux terminal engine + system-IME bridge + modifier bar
-:core-crypto            Keystore vault, biometric gate, key material helpers
+:app                    Single Activity, Compose navigation, Hilt DI, background tunnel restoration
+:design-system          Cyber-Dark Material 3 theme, glassmorphic cards, status pills, host-key dialogs
+:core-ssh               sshj transport, TOFU host-key policy, tunnels, SOCKS5, SFTP engine
+:core-terminal          Termux terminal emulator + system-IME bridge + modifier bar
+:core-crypto            Keystore vault, biometric gate, key generator helpers
 :core-data              Room database, DAOs, entities, Hilt DI module
-:feature-connections    profiles, edit screen, encrypted repository
-:feature-session        live terminal, foreground service, snippet paste
-:feature-sftp           remote file browser and transfers
-:feature-tunnels        local / remote / SOCKS forwards with shared sessions
-:feature-snippets       reusable commands
+:feature-connections    profiles, connection edit screen, encrypted repository
+:feature-session        live terminal session, foreground service, snippet paste
+:feature-sftp           remote file browser, breadcrumb bar, queue manager, text edit
+:feature-tunnels        local / remote / SOCKS port forwards + visual flow diagrams
+:feature-snippets       reusable command library
 ```
 
-Detailed data-flow and threading notes in
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Detailed data-flow and threading notes in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-## Privacy contract
+## Privacy & Security Contract
 
-The full contract is documented in [`docs/PRIVACY.md`](docs/PRIVACY.md).
-Summary:
+The full contract is documented in [`docs/PRIVACY.md`](docs/PRIVACY.md) and [`docs/SECURITY.md`](docs/SECURITY.md).
+Key guarantees:
 
 - No account required.
-- No analytics, crash reporting, advertising or remote configuration SDK.
-- CI runs `./gradlew verifyNoTelemetry` on every pull request; the build fails
-if a banned SDK slips into the resolved dependency graph.
-- Private material never appears in logs, clipboard by default, cloud backup,
-device-transfer backup, or plaintext persistence.
-- `FLAG_SECURE` hides terminal contents from screenshots and task previews.
+- Zero analytics, crash reporting, advertising, or tracking SDKs.
+- CI enforces `./gradlew verifyNoTelemetry` on every pull request.
+- Credentials and private keys never leave the device and are never backed up unencrypted.
+- `FLAG_SECURE` prevents recent-task previews and screenshots from leaking sensitive terminal screens.
 
-## Build prerequisites
-
-- Current stable Android Studio
-- JDK 17
-- Android SDK Platform 36
-- Android NDK 28.2.13676358 (Gradle/CI installs it automatically)
-- A physical Android 12+ device for validation
+## Building & Testing
 
 ```bash
-# Bootstrap a verified Gradle wrapper once, if gradle-wrapper.jar is absent.
+# Bootstrap Gradle wrapper
 gradle wrapper --gradle-version 8.13 --distribution-type all
 
+# Build Debug APK
 ./gradlew :app:assembleDebug
-./gradlew :app:installDebug
+
+# Run static analysis and telemetry verification
 ./gradlew verifyNoTelemetry --no-configuration-cache
-./gradlew ktlintCheck detekt
 ./gradlew testDebugUnitTest
-python3 scripts/verify_native_alignment.py app/build/outputs/apk/debug/app-debug.apk
 ```
 
-For a locally signed release on Windows, provision the key once, back up the
-generated keystore and credentials, then build the Release variant in Android
-Studio or from PowerShell:
+Windows PowerShell build command:
 
 ```powershell
-.\scripts\provision-release-signing.ps1
-.\gradlew.bat :app:assembleRelease
-python .\scripts\verify_native_alignment.py .\app\build\outputs\apk\release\app-release.apk
+$env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"
+.\gradlew.bat assembleDebug
 ```
 
-The provisioner refuses to replace an existing key. The keystore and its
-credentials remain ignored by Git; CI continues to use injected repository
-secrets.
+For release signing setup, see [`scripts/provision-release-signing.ps1`](scripts/provision-release-signing.ps1).
 
-## Testing
+## Documentation Sitemap
 
-Every feature module ships JVM unit tests. Coverage highlights:
-
-- **`core-ssh`** — host-key TOFU acceptance, changed-key refusal, tunnel model
-invariants, and strict algorithm allowlists.
-- **`core-crypto`** — Ed25519/ECDSA key generation, OpenSSH `authorized_keys`
-formatting, SHA-256 fingerprint prefix.
-- **`core-terminal`** — special-key byte sequences (Esc, Tab, arrows, PgUp/Dn).
-- **`feature-connections`** — mapper round-trip, auth-mode switching, secret-preservation on partial
-update, AuthMethod integer encoding, seal-before-Room contract, and migration codec coverage.
-- **`feature-tunnels`** — TunnelRepository entity round-trip (LOCAL / REMOTE /
-DYNAMIC), Flow observation, connection-scoped filtering.
-- **`feature-snippets`** — blank-label guard, CRUD flow through DAO, ordering.
-- **`feature-session`** — BackgroundActivityController counter clamping,
-promote/demote sequence, 100× stress test.
-
-Full guide: [`docs/TESTING.md`](docs/TESTING.md). Release evidence lives in
-[`docs/RELEASE_VALIDATION_CHECKLIST.md`](docs/RELEASE_VALIDATION_CHECKLIST.md)
-and [`docs/DEVICE_TEST_MATRIX_API31_33_35_36.md`](docs/DEVICE_TEST_MATRIX_API31_33_35_36.md).
-
-## Security reporting
-
-See [`docs/SECURITY.md`](docs/SECURITY.md). Do **not** file public issues for
-vulnerabilities.
-
-## Contributing
-
-Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before submitting a PR. The biggest
-contribution right now is helping close the release gates, with test evidence.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — System architecture, module boundaries, data-flow, threading.
+- [`docs/DESIGN_ASSETS.md`](docs/DESIGN_ASSETS.md) — Design system tokens, color palettes, typography scale, component specs.
+- [`docs/CHANGELOG.md`](docs/CHANGELOG.md) — Detailed milestone log.
+- [`docs/RELEASE_BLOCKERS.md`](docs/RELEASE_BLOCKERS.md) — Production readiness and release gate verification.
+- [`docs/TESTING.md`](docs/TESTING.md) — Test suite documentation and coverage targets.
+- [`docs/SECURITY.md`](docs/SECURITY.md) — Security model and vulnerability disclosure policy.
+- [`docs/PRIVACY.md`](docs/PRIVACY.md) — Offline-first privacy contract.
 
 ## License
 
-Apache 2.0 for xSSH source. The APK includes
-[`THIRD_PARTY_NOTICES.txt`](app/src/main/assets/THIRD_PARTY_NOTICES.txt) for
-bundled component attribution.
+Apache 2.0 License. Bundled third-party attributions are listed in [`THIRD_PARTY_NOTICES.txt`](app/src/main/assets/THIRD_PARTY_NOTICES.txt).

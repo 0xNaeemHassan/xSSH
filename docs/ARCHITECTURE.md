@@ -1,13 +1,13 @@
 # Architecture
 
-## Module graph
+## Module Graph
 
 ```
 ┌───────────────┐
-│     :app      │  ← Application + MainActivity + Hilt
+│     :app      │  ← Application + MainActivity + Compose Nav + Hilt
 └───┬───────┬───┘
-│       │
-┌───────────┴──┐    │
+    │       │
+┌───┴───────┴──┐    │
 ▼              ▼    ▼
 :feature-session  :feature-tunnels
 │              │
@@ -16,60 +16,64 @@
 :feature-connections  :feature-sftp  :feature-snippets
 │                 │              │
 └───────┬─────────┴──────────────┘
-▼
+        ▼
 :design-system   :core-terminal   :core-ssh   :core-crypto   :core-data
-\      │      /
-\     ▼     /
-(sshj + BouncyCastle)
+       \               │               /
+        \              ▼              /
+         (sshj + BouncyCastle + Termux)
 ```
 
-Rules:
+### Module Rules & Layer Boundaries
 
-- **Feature → feature dependencies are the exception, not the rule.**
-`:feature-tunnels` depends on `:feature-session` because `TunnelManager` needs
-to bump `BackgroundActivityController` on start/stop; that is the only such
-edge in the graph.
-- **Cores never depend on features.** `:core-data` exposes a
-storage-neutral `KnownHostStore` interface implemented by
-`:core-data:RoomKnownHostStore` so `:core-ssh` stays Room-free.
-- **`:app` is the composition root** — it wires Application, MainActivity,
-Hilt entry points, navigation, and tunnel restoration on app-process launch.
+- **Features do not depend on each other**, except for `:feature-tunnels` depending on `:feature-session` for `BackgroundActivityController` reference bumps during active port forwards.
+- **`:design-system` provides core UI theme & components.** All feature modules consume design system tokens (Cyber-Dark color schemes, glassmorphism containers, status pills, dialogs).
+- **Cores never depend on features.** `:core-data` exposes storage-neutral repository contracts (`KnownHostStore`, `ConnectionRepository`) implemented via Room DAOs so `:core-ssh` remains free of Android Room dependencies.
+- **`:app` is the composition root.** It wires Hilt dependency injection, single-activity entry, Compose navigation graph (`XSshNavHost`), system bar insets, and background tunnel recovery on process launch.
 
-## Threading model
+---
 
-- **UI** — Compose recompositions on `Dispatchers.Main.immediate` where safe.
-- **SSH transport** — every sshj call bounces to `Dispatchers.IO` because
-sshj is a blocking JVM library. `SshSession.connect`, `openShell`,
-`openLocalForward`, and `openRemoteForward` all use `withContext(Dispatchers.IO)`.
-- **Terminal reader** — a single per-session coroutine reads from the sshj
-input stream and feeds bytes into the Termux emulator via
-`feedRemoteBytes(...)`; the emulator itself handles thread-safety for
-atomic appends.
-- **Foreground-service counter** — `BackgroundActivityController` uses
-`AtomicInteger.updateAndGet` for lock-free bumps; the `ServiceLauncher`
-seam then dispatches start/stop-service intents onto the main-thread Handler
-because several OEM Android builds refuse those calls from background
-threads.
+## Design System Architecture (`:design-system`)
 
-## Data flow — one keystroke, one byte back
+The application adopts a **Cyber-Dark & Material 3** visual language:
+
+- **Theme Engine (`XSshTheme`)**: Maps `DarkColorScheme` and `LightColorScheme` to Material 3 tokens. Supports Android 12+ dynamic Material You colors while retaining a dark-first fallback (`#070B10` background, `#0D131C` surface, `#38BDF8` primary cyan).
+- **Component Palette**:
+  - `GlassCard`: Card surface with subtle border stroke and elevated container fill.
+  - `StatusPill`: Dot-indicated status badge with HSL alpha backgrounds for live connection states.
+  - `SectionCard`: Grouped settings container with bold title and subtitle typography.
+  - `EmptyState`: Hero illustrations with glowing icon badge and action button.
+  - `StatSummaryCard`: Compact metrics card for tunnel and transfer statistics.
+
+---
+
+## Threading Model
+
+- **UI Layer** — Compose recompositions run on `Dispatchers.Main.immediate`.
+- **SSH Transport** — All blocking `sshj` network operations run on `Dispatchers.IO` (`SshSession.connect`, `openShell`, `openLocalForward`, `openRemoteForward`).
+- **Terminal Input/Output** — A dedicated reader coroutine reads bytes from `Session.Shell.inputStream` and feeds them to the Termux emulator via `feedRemoteBytes(...)`.
+- **Foreground Service Controller** — `BackgroundActivityController` uses lock-free `AtomicInteger` operations to increment active session and tunnel counters, delegating `ServiceLauncher` intents to the main thread handler.
+
+---
+
+## Data Flow — Terminal Keystroke Lifecycle
 
 ```
-System IME  ─▶  TerminalView (InputConnection)
+System IME / Soft Keyboard  ─▶  TerminalView (InputConnection)
 │
 ▼
 RemoteTerminalSession.write(bytes)
 │
 ▼
 ShellIo.onUserInput(bytes)
-│  (Ctrl/Alt "arm-once" transforms happen here)
+│  (Ctrl/Alt "arm-once" stateful modifier transforms applied here)
 ▼
-Session.Shell.outputStream.write(bytes)     ← sshj, on Dispatchers.IO
+Session.Shell.outputStream.write(bytes)     ← sshj transport on Dispatchers.IO
 │
 ▼
-PTY on server
+Remote Server PTY
 │
 ▼
-Session.Shell.inputStream.read(...)         ← reader coroutine
+Session.Shell.inputStream.read(...)         ← Reader coroutine
 │
 ▼
 feedRemoteBytes(termuxSession, bytes, n)
@@ -78,14 +82,12 @@ feedRemoteBytes(termuxSession, bytes, n)
 Termux TerminalEmulator (append + invalidate)
 │
 ▼
-TerminalView redraws (Canvas)
+TerminalView Canvas Redraw
 ```
 
-There is **no custom on-screen keyboard**. The optional `ModifierBar` supplies
-only the keys that Android IMEs don't emit reliably (Esc, Tab, Ctrl, Alt,
-arrows, common shell symbols, PgUp/PgDn, Home/End).
+---
 
-## Snippet paste flow
+## Snippet Paste Flow
 
 ```
 SnippetsScreen (Room CRUD)
@@ -102,16 +104,15 @@ SessionScreen.SnippetPasteSheet
 SessionViewModel.pasteSnippet(body, appendNewline)
 │
 ▼
-(same writeAsync path used by real keystrokes)
+ShellIo.onUserInput(bytes)
 ```
 
-`executeOnPaste = true` on the snippet, or the paste-and-run button on the
-picker, both add a trailing `\n` so the command runs immediately.
+---
 
-## Host-key TOFU state machine
+## Host-Key TOFU State Machine
 
 ```
-sshj transport thread            InteractiveHostKeyVerifier          UI
+sshj transport thread            InteractiveHostKeyVerifier          UI (Jetpack Compose)
 │
 │  verify(host, port, key)
 │──────────────────────────▶
@@ -124,7 +125,7 @@ sshj transport thread            InteractiveHostKeyVerifier          UI
 │      pendingPrompt = ...                     matches?  → true
 │      events = Unknown(...)                             │ or
 │                                                        ▼
-│           │  ◀── acceptPending()/rejectPending() ─── UI
+│           │  ◀── acceptPending()/rejectPending() ─── UI Dialog
 │           │      OR withTimeoutOrNull expires
 │           ▼
 │      store.put(new) if accepted → return true
@@ -134,37 +135,27 @@ sshj transport thread            InteractiveHostKeyVerifier          UI
 │  (no answer) events = TimedOut → return false
 ```
 
-The decision timeout (default 90 s) guarantees the sshj transport thread
-never blocks indefinitely, even if the UI is torn down mid-prompt.
+Decision timeout (90 s) prevents blocked transport threads if UI context changes during verification.
 
-## Tunnel lifecycle & session sharing
+---
 
-`TunnelManager` reference-counts one `SshSession` per SSH connection id.
-Multiple tunnels that target the same server share the underlying TCP+SSH
-transport:
+## Tunnel Lifecycle & Shared Sessions
+
+`TunnelManager` reference-counts one `SshSession` per SSH connection id. Multiple tunnels targeting the same host share the underlying transport:
 
 ```
 tunnelA ─┐
-tunnelB ─┼─▶  Shared(session_c1, refs = {A, B, C})  ─▶  SSHClient (one)
+tunnelB ─┼─▶  Shared(session_c1, refs = {A, B, C})  ─▶  SSHClient (single connection)
 tunnelC ─┘
 
-stop(A) → refs = {B, C}    (session stays)
-stop(B) → refs = {C}       (session stays)
-stop(C) → refs = {}        (SSHClient.close())
+stop(A) → refs = {B, C}    (session stays active)
+stop(B) → refs = {C}       (session stays active)
+stop(C) → refs = {}        (SSHClient closes cleanly)
 ```
 
-Direct-TCP channels for LOCAL forwards live on a dedicated daemon thread each,
-because sshj's `LocalPortForwarder.listen()` blocks the caller until the bound
-`ServerSocket` is closed. REMOTE forwards close via
-`RemotePortForwarder.cancel(...)`. DYNAMIC forwards run a `Socks5Server` that
-opens one `SSHClient.newDirectConnection(host, port)` per accepted TCP
-connection.
+---
 
-## Foreground service
-
-`SessionForegroundService` is promoted whenever `BackgroundActivityController`
-sees a session or tunnel counter > 0. Every bump is a single-intent round
-trip:
+## Foreground Service Architecture
 
 ```
 SessionViewModel.start()            TunnelManager.doStart()
@@ -178,22 +169,12 @@ BackgroundActivityController.refresh()
 ▼
 SessionForegroundService.onStartCommand
 │
-│  startForeground(id, notification, SPECIAL_USE [34+] / DATA_SYNC [31–33])
-│
 ▼
 User sees ongoing notification: "N active sessions • M tunnels"
 ```
 
-`ServiceLauncher` is an interface with two implementations:
-`AndroidServiceLauncher` (production, main-thread Handler + real Context) and a
-per-test `RecordingLauncher` used in
-`BackgroundActivityControllerTest`. That seam is why the controller's counter
-logic is JVM-unit-testable without Robolectric.
+---
 
-## Terminal engine choice
+## Terminal Engine Integration
 
-We use Termux's `terminal-emulator` / `terminal-view` pair (Apache 2.0) in
-`:core-terminal`. The attributed JNI bridge is rebuilt locally with NDK r28
-instead of packaging Termux's older binary. `RemoteTerminalSession` subclasses `TerminalSession` and
-overrides `write(...)` so user keystrokes flow into `ShellIo.onUserInput`
-instead of a local subprocess.
+`:core-terminal` wraps Termux's `terminal-emulator` and `terminal-view` libraries (Apache 2.0). NDK native JNI bindings are compiled with NDK 28. `RemoteTerminalSession` extends Termux's `TerminalSession` to direct terminal output into `ShellIo` while keeping full terminal emulation capabilities.

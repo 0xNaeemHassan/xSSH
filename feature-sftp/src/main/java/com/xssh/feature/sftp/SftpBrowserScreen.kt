@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -25,12 +26,14 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Upload
@@ -67,6 +70,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -77,6 +81,7 @@ import com.xssh.core.ssh.SftpEntry
 import com.xssh.design.components.ChangedHostKeyDialog
 import com.xssh.design.components.DeleteConfirmationDialog
 import com.xssh.design.components.EmptyState
+import com.xssh.design.components.GlassCard
 import com.xssh.design.components.KeyboardInteractiveDialog
 import com.xssh.design.components.PageContainer
 import com.xssh.design.components.StatusPill
@@ -163,11 +168,11 @@ fun SftpBrowserScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("SFTP files", style = MaterialTheme.typography.titleMedium)
+                        Text("Remote SFTP Browser", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Text(
                             state.path,
                             style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.primary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -192,7 +197,7 @@ fun SftpBrowserScreen(
                         onClick = { openDocument.launch(arrayOf("*/*")) },
                         enabled = state.connected && !state.loading,
                     ) {
-                        Icon(Icons.Filled.Upload, contentDescription = "Upload file")
+                        Icon(Icons.Filled.Upload, contentDescription = "Upload file", tint = MaterialTheme.colorScheme.primary)
                     }
                     IconButton(onClick = { vm.refresh() }, enabled = state.connected && !state.loading) {
                         Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
@@ -203,8 +208,18 @@ fun SftpBrowserScreen(
     ) { inner ->
         PageContainer(modifier = Modifier.fillMaxSize().padding(inner)) {
             Column(modifier = Modifier.fillMaxSize()) {
+                PathBreadcrumbBar(
+                    path = state.path,
+                    onNavigateTo = { targetPath ->
+                        if (targetPath != state.path) {
+                            vm.refresh(targetPath)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp),
+                )
+
                 if (state.loading || state.externalEditorPreparing) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primary)
                 }
 
                 state.error?.let { error ->
@@ -223,21 +238,21 @@ fun SftpBrowserScreen(
                                     Icon(Icons.Filled.Close, contentDescription = "Dismiss error")
                                 }
                             } else {
-                                TextButton(onClick = { vm.reconnect(connectionId) }) { Text("Retry") }
+                                TextButton(onClick = { vm.reconnect(connectionId) }) { Text("Retry", fontWeight = FontWeight.Bold) }
                             }
                         }
                     }
                 }
 
                 state.transfer?.let { transfer ->
-                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp)) {
+                    GlassCard(modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)) {
                         Column(
-                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            modifier = Modifier.fillMaxWidth().padding(14.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(transfer.label, style = MaterialTheme.typography.titleSmall)
+                                    Text(transfer.label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                                     Text(
                                         if (transfer.totalBytes > 0) {
                                             "${Formatter.formatFileSize(
@@ -251,6 +266,7 @@ fun SftpBrowserScreen(
                                             )} transferred"
                                         },
                                         style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                                 TextButton(onClick = vm::cancelCurrent) { Text("Cancel") }
@@ -264,9 +280,10 @@ fun SftpBrowserScreen(
                                         )
                                     },
                                     modifier = Modifier.fillMaxWidth(),
+                                    color = MaterialTheme.colorScheme.primary,
                                 )
                             } else {
-                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primary)
                             }
                         }
                     }
@@ -292,7 +309,7 @@ fun SftpBrowserScreen(
                             icon = Icons.Filled.FolderOpen,
                             title = "This folder is empty",
                             body = "Upload a file or create a folder here.",
-                            actionLabel = "Upload file",
+                            actionLabel = "Upload File",
                             onAction = { openDocument.launch(arrayOf("*/*")) },
                         )
                     state.connected ->
@@ -330,7 +347,7 @@ fun SftpBrowserScreen(
 
     if (showNewFolder) {
         NameDialog(
-            title = "New folder",
+            title = "Create New Folder",
             initial = "",
             confirmLabel = "Create",
             onDismiss = { showNewFolder = false },
@@ -357,7 +374,7 @@ fun SftpBrowserScreen(
             title = "Delete ${entry.name}?",
             body =
                 if (entry.isDir) {
-                    "The remote folder must be empty. This cannot be undone."
+                    "The remote folder must be empty. This action cannot be undone."
                 } else {
                     "The remote file will be permanently deleted."
                 },
@@ -379,17 +396,17 @@ fun SftpBrowserScreen(
                 modifier = Modifier.fillMaxWidth().padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text("Quick edit", style = MaterialTheme.typography.titleLarge)
+                Text("Quick Text Editor", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(
                     editor.entryName,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    color = MaterialTheme.colorScheme.primary,
                 )
                 editor.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 OutlinedTextField(
                     value = editor.text,
                     onValueChange = vm::updateEditorText,
-                    label = { Text("UTF-8 text") },
+                    label = { Text("UTF-8 Content") },
                     minLines = 12,
                     maxLines = 20,
                     keyboardOptions =
@@ -404,7 +421,7 @@ fun SftpBrowserScreen(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = requestEditorClose, enabled = !editor.saving) { Text("Cancel") }
                     TextButton(onClick = vm::saveEditor, enabled = !editor.saving) {
-                        Text(if (editor.saving) "Saving…" else "Save to server")
+                        Text(if (editor.saving) "Saving to Server…" else "Save to Server", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -413,10 +430,10 @@ fun SftpBrowserScreen(
     if (confirmEditorDiscard) {
         AlertDialog(
             onDismissRequest = { confirmEditorDiscard = false },
-            title = { Text("Discard remote edits?") },
+            title = { Text("Discard Remote Edits?", fontWeight = FontWeight.Bold) },
             text = { Text("Your unsaved changes to this remote file will be lost.") },
             dismissButton = {
-                TextButton(onClick = { confirmEditorDiscard = false }) { Text("Keep editing") }
+                TextButton(onClick = { confirmEditorDiscard = false }) { Text("Keep Editing") }
             },
             confirmButton = {
                 TextButton(
@@ -424,7 +441,7 @@ fun SftpBrowserScreen(
                         confirmEditorDiscard = false
                         vm.closeEditor()
                     },
-                ) { Text("Discard") }
+                ) { Text("Discard", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) }
             },
         )
     }
@@ -432,7 +449,7 @@ fun SftpBrowserScreen(
     state.externalEditor?.takeIf { it.returned }?.let { edit ->
         AlertDialog(
             onDismissRequest = {},
-            title = { Text("Save external edits?") },
+            title = { Text("Save External Edits?", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Upload the edited copy of ${edit.entryName} back to the server?")
@@ -446,12 +463,12 @@ fun SftpBrowserScreen(
             },
             dismissButton = {
                 TextButton(onClick = vm::discardExternalEdit, enabled = !edit.saving) {
-                    Text("Discard local copy")
+                    Text("Discard Local Copy")
                 }
             },
             confirmButton = {
                 TextButton(onClick = vm::saveExternalEdit, enabled = !edit.saving) {
-                    Text(if (edit.saving) "Uploading…" else "Save to server")
+                    Text(if (edit.saving) "Uploading…" else "Save to Server", fontWeight = FontWeight.Bold)
                 }
             },
         )
@@ -495,7 +512,7 @@ fun SftpBrowserScreen(
                         onBack()
                     }) { Text("OK") }
                 },
-                title = { Text("Verification timed out") },
+                title = { Text("Verification Timed Out", fontWeight = FontWeight.Bold) },
                 text = { Text("The fingerprint was not confirmed in time, so xSSH refused the SFTP connection.") },
             )
         else -> Unit
@@ -514,16 +531,73 @@ fun SftpBrowserScreen(
     overwritePrompt?.let { prompt ->
         AlertDialog(
             onDismissRequest = prompt::cancel,
-            title = { Text("Replace remote file?") },
+            title = { Text("Replace Remote File?", fontWeight = FontWeight.Bold) },
             text = {
                 Text(
                     "${prompt.name} already exists in this folder. xSSH will upload to a " +
                         "temporary file and replace it only after the transfer succeeds.",
                 )
             },
-            dismissButton = { TextButton(onClick = prompt::cancel) { Text("Keep existing") } },
-            confirmButton = { TextButton(onClick = prompt::replace) { Text("Replace") } },
+            dismissButton = { TextButton(onClick = prompt::cancel) { Text("Keep Existing") } },
+            confirmButton = { TextButton(onClick = prompt::replace) { Text("Replace", fontWeight = FontWeight.Bold) } },
         )
+    }
+}
+
+@Composable
+private fun PathBreadcrumbBar(
+    path: String,
+    onNavigateTo: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val segments = remember(path) {
+        val parts = path.split('/').filter(String::isNotEmpty)
+        val list = mutableListOf<Pair<String, String>>()
+        list.add("Root" to "/")
+        var current = ""
+        parts.forEach { part ->
+            current += "/$part"
+            list.add(part to current)
+        }
+        list
+    }
+    LazyRow(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        items(segments) { (name, target) ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = if (target == path) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+                    modifier = Modifier.clickable { onNavigateTo(target) },
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        if (name == "Root") {
+                            Icon(Icons.Filled.Home, contentDescription = "Root", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+                        } else {
+                            Text(name, style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace), fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+                if (target != path) {
+                    Icon(
+                        Icons.Filled.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -540,25 +614,23 @@ private fun FileRow(
     val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+        Surface(
+            shape = MaterialTheme.shapes.medium,
+            color = if (entry.isDir) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceContainerHigh,
+        ) {
             Icon(
                 if (entry.isDir) Icons.Filled.Folder else Icons.AutoMirrored.Filled.InsertDriveFile,
                 contentDescription = null,
-                tint =
-                    if (entry.isDir) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
+                tint = if (entry.isDir) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(10.dp).size(22.dp),
             )
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(entry.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(entry.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 if (entry.isDir) {
                     "Folder"
@@ -581,14 +653,14 @@ private fun FileRow(
                 if (!entry.isDir) {
                     DropdownMenuItem(
                         text = { Text("Download") },
-                        leadingIcon = { Icon(Icons.Filled.Download, contentDescription = null) },
+                        leadingIcon = { Icon(Icons.Filled.Download, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                         onClick = {
                             expanded = false
                             onDownload()
                         },
                     )
                     DropdownMenuItem(
-                        text = { Text("Quick edit") },
+                        text = { Text("Quick Edit") },
                         leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
                         onClick = {
                             expanded = false
@@ -596,7 +668,7 @@ private fun FileRow(
                         },
                     )
                     DropdownMenuItem(
-                        text = { Text("Edit in another app") },
+                        text = { Text("Edit in External App") },
                         leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
                         onClick = {
                             expanded = false
@@ -642,7 +714,7 @@ private fun NameDialog(
     var value by remember(initial) { mutableStateOf(initial) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
+        title = { Text(title, fontWeight = FontWeight.Bold) },
         text = {
             OutlinedTextField(
                 value = value,
@@ -655,7 +727,7 @@ private fun NameDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
         confirmButton = {
             TextButton(onClick = { onConfirm(value.trim()) }, enabled = isValidRemoteName(value)) {
-                Text(confirmLabel)
+                Text(confirmLabel, fontWeight = FontWeight.Bold)
             }
         },
     )
@@ -675,11 +747,11 @@ private fun TransferQueueSection(
                 it.status == TransferStatus.FAILED ||
                 it.status == TransferStatus.CANCELLED
         }
-    Card(modifier = modifier.fillMaxWidth(), border = CardDefaults.outlinedCardBorder()) {
-        Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    GlassCard(modifier = modifier) {
+        Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Transfer queue", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                if (finished > 0) TextButton(onClick = onClearFinished) { Text("Clear finished") }
+                Text("Transfer Queue", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                if (finished > 0) TextButton(onClick = onClearFinished) { Text("Clear Finished") }
             }
             queue.take(4).forEach { item ->
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -687,6 +759,7 @@ private fun TransferQueueSection(
                         Text(
                             item.label,
                             style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -719,7 +792,7 @@ private fun TransferQueueSection(
                 }
             }
             if (queue.size > 4) {
-                Text("${queue.size - 4} more queued", style = MaterialTheme.typography.bodySmall)
+                Text("${queue.size - 4} more queued transfers", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

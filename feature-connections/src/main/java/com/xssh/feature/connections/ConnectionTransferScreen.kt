@@ -6,13 +6,20 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.ImportExport
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -21,6 +28,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -28,11 +36,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.xssh.design.components.GlassCard
 import com.xssh.design.components.PageContainer
+import com.xssh.design.components.SectionCard
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -112,7 +124,7 @@ fun ConnectionTransferScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Transfer & migrate") },
+                title = { Text("Transfer & Migrate", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
@@ -128,72 +140,92 @@ fun ConnectionTransferScreen(
                 modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                GlassCard(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                    borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                ) {
                     Column(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(18.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text("Migration toolkit", style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            "Export a full xSSH metadata bundle, import prior xSSH bundles, or migrate " +
-                                "from OpenSSH/JuiceSSH-style config files. Secrets are deliberately " +
-                                "excluded from exports and must be re-entered after import.",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Export", style = MaterialTheme.typography.titleSmall)
-                    Button(
-                        onClick = { exportBundleLauncher.launch("xssh-connections-bundle.json") },
-                        enabled = !state.busy,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Export xSSH bundle (.json)")
-                    }
-                    Button(
-                        onClick = { exportConfigLauncher.launch("xssh-open-ssh-config.txt") },
-                        enabled = !state.busy,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Export OpenSSH config (.txt)")
-                    }
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Import", style = MaterialTheme.typography.titleSmall)
-                    Button(
-                        onClick = { importBundleLauncher.launch(arrayOf("application/json", "text/*")) },
-                        enabled = !state.busy,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Import xSSH bundle")
-                    }
-                    Button(
-                        onClick = { importConfigLauncher.launch(arrayOf("text/*", "application/octet-stream")) },
-                        enabled = !state.busy,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Import OpenSSH / JuiceSSH config")
-                    }
-                }
-
-                Card {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text("Last result", style = MaterialTheme.typography.titleSmall)
-                        if (state.busy) {
-                            CircularProgressIndicator()
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Icon(Icons.Filled.ImportExport, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Text("Migration & Backup Toolkit", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         }
                         Text(
-                            state.status.ifBlank { "No transfer operation has run yet." },
+                            "Export full xSSH metadata bundles, import prior backups, or migrate profiles from " +
+                                "OpenSSH / JuiceSSH config files. Secret credentials are intentionally excluded " +
+                                "from plaintext export files for security.",
                             style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                    }
+                }
+
+                SectionCard("Export Options", subtitle = "Save connection profiles to local files") {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Button(
+                            onClick = { exportBundleLauncher.launch("xssh-connections-bundle.json") },
+                            enabled = !state.busy,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.medium,
+                        ) {
+                            Icon(Icons.Filled.FileUpload, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                            Text("Export xSSH Bundle (.json)", fontWeight = FontWeight.SemiBold)
+                        }
+                        OutlinedButton(
+                            onClick = { exportConfigLauncher.launch("xssh-open-ssh-config.txt") },
+                            enabled = !state.busy,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.medium,
+                        ) {
+                            Icon(Icons.Filled.Upload, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                            Text("Export OpenSSH Config (.txt)", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+
+                SectionCard("Import & Restore", subtitle = "Load connections from external sources") {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Button(
+                            onClick = { importBundleLauncher.launch(arrayOf("application/json", "text/*")) },
+                            enabled = !state.busy,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.medium,
+                        ) {
+                            Icon(Icons.Filled.FileDownload, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                            Text("Import xSSH Bundle", fontWeight = FontWeight.SemiBold)
+                        }
+                        OutlinedButton(
+                            onClick = { importConfigLauncher.launch(arrayOf("text/*", "application/octet-stream")) },
+                            enabled = !state.busy,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.medium,
+                        ) {
+                            Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                            Text("Import OpenSSH / JuiceSSH Config", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+
+                SectionCard("Transfer Activity Log") {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        if (state.busy) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                Text("Processing transfer…", style = MaterialTheme.typography.bodyMedium)
+                            }
+                        } else {
+                            Text(
+                                state.status.ifBlank { "No transfer operation run yet." },
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
                         state.details.forEach { detail ->
-                            Text("• $detail", style = MaterialTheme.typography.bodySmall)
+                            Text("• $detail", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }

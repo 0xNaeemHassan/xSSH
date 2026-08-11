@@ -10,24 +10,29 @@
  * modifier so the very next keystroke is transformed once, then the chip
  * disarms itself. That gives users a phone-native Ctrl-C / Ctrl-D / Alt-.
  * flow without a hardware modifier key.
- *
- * A previous version of this file defined a private
- * `LazyListScope.items(count, block)` helper that recursively invoked itself
- * with the same signature — an infinite loop at first render. This file now
- * uses `LazyRow`'s built-in overload directly, which is what was intended.
  */
 package com.xssh.core.terminal
 
 import android.view.KeyEvent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.termux.terminal.KeyHandler
 import com.termux.terminal.TerminalSession
@@ -50,6 +55,12 @@ enum class SpecialKey {
     SLASH,
     DASH,
     TILDE,
+    DOLLAR,
+    SEMICOLON,
+    COLON,
+    BACKSLASH,
+    LESS_THAN,
+    GREATER_THAN,
 }
 
 fun SpecialKey.toBytes(): ByteArray =
@@ -68,6 +79,12 @@ fun SpecialKey.toBytes(): ByteArray =
         SpecialKey.SLASH -> "/".toByteArray()
         SpecialKey.DASH -> "-".toByteArray()
         SpecialKey.TILDE -> "~".toByteArray()
+        SpecialKey.DOLLAR -> "$".toByteArray()
+        SpecialKey.SEMICOLON -> ";".toByteArray()
+        SpecialKey.COLON -> ":".toByteArray()
+        SpecialKey.BACKSLASH -> "\\".toByteArray()
+        SpecialKey.LESS_THAN -> "<".toByteArray()
+        SpecialKey.GREATER_THAN -> ">".toByteArray()
         SpecialKey.CTRL_TOGGLE, SpecialKey.ALT_TOGGLE, SpecialKey.PASTE -> ByteArray(0)
     }
 
@@ -116,11 +133,6 @@ fun SpecialKey.toBytes(
     return if (alt) byteArrayOf(0x1b) + controlled else controlled
 }
 
-/**
- * Ordered chip list. Declared at file scope so a fresh list is not allocated
- * on every recomposition — the bar re-renders every time the arm/disarm
- * state flips, which is often.
- */
 private val BAR_KEYS: List<Pair<String, SpecialKey>> =
     listOf(
         "Esc" to SpecialKey.ESC,
@@ -140,7 +152,15 @@ private val BAR_KEYS: List<Pair<String, SpecialKey>> =
         "/" to SpecialKey.SLASH,
         "-" to SpecialKey.DASH,
         "~" to SpecialKey.TILDE,
+        "$" to SpecialKey.DOLLAR,
+        ";" to SpecialKey.SEMICOLON,
+        ":" to SpecialKey.COLON,
+        "\\" to SpecialKey.BACKSLASH,
+        "<" to SpecialKey.LESS_THAN,
+        ">" to SpecialKey.GREATER_THAN,
     )
+
+private val LED_GREEN = Color(0xFF34D399)
 
 @Composable
 fun ModifierBar(
@@ -150,8 +170,8 @@ fun ModifierBar(
     modifier: Modifier = Modifier,
 ) {
     LazyRow(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 3.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         items(count = BAR_KEYS.size) { i ->
             val (label, code) = BAR_KEYS[i]
@@ -161,7 +181,32 @@ fun ModifierBar(
             FilterChip(
                 selected = selected,
                 onClick = { onKey(code) },
-                label = { Text(label, style = MaterialTheme.typography.labelMedium) },
+                label = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        if (selected) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(LED_GREEN),
+                            )
+                        }
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                        )
+                    }
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    labelColor = MaterialTheme.colorScheme.onSurface,
+                ),
             )
         }
     }

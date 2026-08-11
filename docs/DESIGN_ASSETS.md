@@ -1,50 +1,63 @@
-# xSSH visual assets
+# xSSH Visual Assets & Design Tokens
 
-The following generated assets are included in `docs/images/` and are intended
-as **editable visual direction**, not proof of a final product UI:
+## Asset Directory Overview
+
+The following visual assets live in `docs/images/`:
 
 | Asset | Use |
 |---|---|
-| `xssh-icon.png` | App icon concept, social avatar, README mark |
-| `xssh-hero.png` | README / website hero banner |
-| `xssh-app-screens.png` | Play/F-Droid feature graphic concept and UI direction |
-| `xssh-architecture.png` | Architecture-document illustration |
+| `xssh-icon.png` | App icon mark, avatar, README brand image |
+| `xssh-hero.png` | Main README hero header banner |
+| `xssh-app-screens.png` | Play Store / F-Droid feature graphics & UI mockups |
+| `xssh-architecture.png` | System architecture diagram illustration |
 
-## Adaptive launcher icon (in-tree)
+## Adaptive Launcher Icon
 
-Since checkpoint 12 the repo also ships a real, ready-to-build adaptive
-launcher icon:
+Native Android adaptive launcher icon assets:
 
-- `app/src/main/res/mipmap-anydpi/ic_launcher.xml` + `ic_launcher_round.xml`
-- `app/src/main/res/drawable/ic_launcher_foreground.xml` — vector `>_`
-  terminal-prompt glyph in the accent green
-- `app/src/main/res/values/ic_launcher_background.xml` — solid `#0B0F14` ink
-- `<monochrome>` variant so Android 13+ themed-icons render cleanly
+- `app/src/main/res/mipmap-anydpi/ic_launcher.xml` & `ic_launcher_round.xml`
+- `app/src/main/res/drawable/ic_launcher_foreground.xml` — Vector terminal prompt glyph `>_`
+- `app/src/main/res/values/ic_launcher_background.xml` — Obsidian dark `#070B10`
+- Android 13+ `<monochrome>` themed icon support built-in
 
-The store-quality asset export (feature graphic, 512×512 hi-res icon, real
-device screenshots from a signed build) is still on the production-asset
-checklist below.
+---
 
-## In-app visual language
+## Design System Tokens (`:design-system`)
 
-- **Mood:** dark-first developer tool, calm rather than neon.
-- **Fallback palette:** background `#0B0F14`, surface `#11161D`, cyan accent
-  `#5AC8FA`, violet secondary `#8E97F0`, error `#FF6B6B`.
-- **Dynamic color:** Android 12+ should use Material You by default; retain the
-  fallback palette for users who opt out.
-- **Typography:** Material 3 for application UI; monospace for terminal only.
-- **Motion:** 180–220 ms route transitions; respect Android animator-duration
-  scale; no animation inside terminal rendering.
-- **Touch:** modifier chips must be at least 48 dp tall and scroll horizontally.
+### Color Palette
 
-## Production asset checklist
+- **Primary Accent**: Electric Sky Cyan (`#38BDF8`)
+- **Secondary Accent**: Cyber Violet (`#A78BFA`)
+- **Tertiary Accent**: Mint Emerald (`#34D399`)
+- **Background**: Cosmic Dark (`#070B10`)
+- **Surface Container**: Obsidian Glass (`#0D131C`)
+- **Surface Elevated**: Glassmorphic Elevation (`#141C28`)
+- **Text High Contrast**: Slate Light (`#F1F5F9`)
+- **Text Muted**: Slate Grey (`#94A3B8`)
+- **Error Accent**: Neon Coral (`#F87171`)
+- **Success Accent**: Emerald Glow (`#10B981`)
+- **Warning Accent**: Amber Glow (`#F59E0B`)
 
-Generated rasters should be replaced/approved before store release:
+### Component Standards
 
-- [x] Adaptive launcher icon foreground/background/monochrome layers shipped
-      in-tree.
-- [ ] Export a 512×512 hi-res launcher icon PNG for Play Store metadata.
-- [ ] Produce a 1024×500 Play feature graphic and at least 2 real device
-      screenshots from a signed release build.
-- [ ] Confirm no generated text is relied on for legal claims or UI labels.
-- [ ] Add attribution/license notes if non-original assets enter the project.
+1. **`GlassCard`**:
+   - Container Color: `#0D131C`
+   - Border Stroke: `1.dp` solid `#334155` (alpha 0.5)
+   - Shape: `RoundedCornerShape(16.dp)`
+
+2. **`StatusPill`**:
+   - Shape: `RoundedCornerShape(28.dp)`
+   - Border: `1.dp` matching pill color at 25% opacity
+   - Interior Dot: `6.dp` solid colored circle
+
+3. **`ModifierBar`**:
+   - Horizontal scrolling list of 48.dp target touch chips
+   - Selected state: `PrimaryContainer` fill + bold typography
+
+4. **Typography**:
+   - Application UI: Material 3 Sans-Serif font hierarchy
+   - Terminal & Code Snippets: Monospace font with crisp line height
+
+5. **Motion Guidelines**:
+   - Navigation Transitions: 180–220 ms ease-in-out
+   - Recomposition Performance: Static list allocations, zero allocation loops inside rendering paths

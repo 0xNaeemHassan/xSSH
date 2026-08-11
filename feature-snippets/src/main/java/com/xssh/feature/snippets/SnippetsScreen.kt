@@ -21,8 +21,6 @@ import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -48,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -55,6 +54,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.xssh.core.data.entity.SnippetEntity
 import com.xssh.design.components.DeleteConfirmationDialog
 import com.xssh.design.components.EmptyState
+import com.xssh.design.components.GlassCard
 import com.xssh.design.components.PageContainer
 import com.xssh.design.components.StatusPill
 
@@ -85,7 +85,7 @@ fun SnippetsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Snippets") },
+                title = { Text("Command Snippets", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
@@ -99,7 +99,9 @@ fun SnippetsScreen(
             ExtendedFloatingActionButton(
                 onClick = { editing = vm.blank() },
                 icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                text = { Text("New snippet") },
+                text = { Text("New Snippet", fontWeight = FontWeight.Bold) },
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             )
         },
     ) { inner ->
@@ -108,7 +110,7 @@ fun SnippetsScreen(
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                     trailingIcon = {
                         if (query.isNotEmpty()) {
                             IconButton(onClick = { query = "" }) {
@@ -116,10 +118,10 @@ fun SnippetsScreen(
                             }
                         }
                     },
-                    placeholder = { Text("Search commands or tags") },
+                    placeholder = { Text("Search snippets by label, code, or tag…") },
                     singleLine = true,
                     shape = MaterialTheme.shapes.large,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 )
 
                 when {
@@ -131,16 +133,16 @@ fun SnippetsScreen(
                         EmptyState(
                             icon = Icons.Filled.Search,
                             title = "No matching snippets",
-                            body = "Search by label, command text, or tag.",
-                            actionLabel = "Clear search",
+                            body = "Search by snippet label, command body, or tag.",
+                            actionLabel = "Clear Search",
                             onAction = { query = "" },
                         )
                     visibleItems.isEmpty() ->
                         EmptyState(
                             icon = Icons.Filled.Code,
-                            title = "Save commands you reuse",
-                            body = "Snippets stay on device and can be reviewed before pasting into a session.",
-                            actionLabel = "Create snippet",
+                            title = "Save Frequently Used Commands",
+                            body = "Snippets stay on device and can be reviewed before pasting into an active SSH session.",
+                            actionLabel = "Create Snippet",
                             onAction = { editing = vm.blank() },
                         )
                     else ->
@@ -149,15 +151,7 @@ fun SnippetsScreen(
                             verticalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
                             items(visibleItems, key = { it.id }) { snippet ->
-                                Card(
-                                    onClick = { editing = snippet },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors =
-                                        CardDefaults.cardColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                        ),
-                                    border = CardDefaults.outlinedCardBorder(),
-                                ) {
+                                GlassCard(onClick = { editing = snippet }) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth().padding(16.dp),
                                         verticalAlignment = Alignment.CenterVertically,
@@ -166,19 +160,19 @@ fun SnippetsScreen(
                                             modifier = Modifier.weight(1f),
                                             verticalArrangement = Arrangement.spacedBy(6.dp),
                                         ) {
-                                            Text(snippet.label, style = MaterialTheme.typography.titleMedium)
+                                            Text(snippet.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                             Text(
                                                 snippet.body,
                                                 style =
                                                     MaterialTheme.typography.bodySmall.copy(
                                                         fontFamily = FontFamily.Monospace,
                                                     ),
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                color = MaterialTheme.colorScheme.primary,
                                                 maxLines = 3,
                                                 overflow = TextOverflow.Ellipsis,
                                             )
                                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                                if (snippet.executeOnPaste) StatusPill("Runs on paste")
+                                                if (snippet.executeOnPaste) StatusPill("Runs on paste", positive = true)
                                                 snippet.tags.take(2).forEach { StatusPill(it) }
                                             }
                                         }
@@ -189,6 +183,7 @@ fun SnippetsScreen(
                                             Icon(
                                                 Icons.Filled.DeleteOutline,
                                                 contentDescription = "Delete ${snippet.label}",
+                                                tint = MaterialTheme.colorScheme.error,
                                             )
                                         }
                                     }
@@ -260,8 +255,9 @@ private fun SnippetEditSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                if (initial.label.isBlank()) "New snippet" else "Edit snippet",
+                if (initial.label.isBlank()) "New Command Snippet" else "Edit Snippet",
                 style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
             )
             OutlinedTextField(
                 value = label,
@@ -273,7 +269,7 @@ private fun SnippetEditSheet(
             OutlinedTextField(
                 value = body,
                 onValueChange = { body = it.take(MAX_SNIPPET_BODY_CHARS) },
-                label = { Text("Command or script") },
+                label = { Text("Command or Shell Script") },
                 minLines = 5,
                 keyboardOptions =
                     KeyboardOptions(
@@ -286,8 +282,7 @@ private fun SnippetEditSheet(
             OutlinedTextField(
                 value = tags,
                 onValueChange = { tags = it.take(12_800) },
-                label = { Text("Tags") },
-                supportingText = { Text("Comma-separated") },
+                label = { Text("Tags (comma separated)") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -301,8 +296,8 @@ private fun SnippetEditSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Run immediately after paste", style = MaterialTheme.typography.titleSmall)
-                    Text("Appends one newline to execute the command.", style = MaterialTheme.typography.bodySmall)
+                    Text("Execute immediately on paste", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Text("Appends a trailing newline to auto-run the command.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Switch(checked = execute, onCheckedChange = null)
             }
@@ -321,7 +316,7 @@ private fun SnippetEditSheet(
                         )
                     },
                     enabled = validationError == null,
-                ) { Text("Save") }
+                ) { Text("Save Snippet", fontWeight = FontWeight.Bold) }
             }
         }
     }
@@ -329,13 +324,13 @@ private fun SnippetEditSheet(
     if (confirmDiscard) {
         AlertDialog(
             onDismissRequest = { confirmDiscard = false },
-            title = { Text("Discard snippet changes?") },
+            title = { Text("Discard Snippet Changes?", fontWeight = FontWeight.Bold) },
             text = { Text("Your unsaved command changes will be lost.") },
             dismissButton = {
-                TextButton(onClick = { confirmDiscard = false }) { Text("Keep editing") }
+                TextButton(onClick = { confirmDiscard = false }) { Text("Keep Editing") }
             },
             confirmButton = {
-                TextButton(onClick = onDismiss) { Text("Discard", color = MaterialTheme.colorScheme.error) }
+                TextButton(onClick = onDismiss) { Text("Discard", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) }
             },
         )
     }

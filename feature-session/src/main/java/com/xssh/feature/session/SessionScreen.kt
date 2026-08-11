@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.ContextWrapper
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -50,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
@@ -61,6 +64,7 @@ import com.xssh.core.terminal.ModifierBar
 import com.xssh.core.terminal.SpecialKey
 import com.xssh.core.terminal.TerminalHost
 import com.xssh.design.components.ChangedHostKeyDialog
+import com.xssh.design.components.GlassCard
 import com.xssh.design.components.KeyboardInteractiveDialog
 import com.xssh.design.components.StatusPill
 import com.xssh.design.components.UnknownHostKeyDialog
@@ -153,20 +157,25 @@ fun SessionScreen(
                 title = {
                     Column {
                         Text(
-                            state.title.ifBlank { "Secure session" },
+                            state.title.ifBlank { "Secure SSH Session" },
                             style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        Text(
-                            when {
-                                state.connected -> "Connected"
-                                state.connecting -> "Connecting securely…"
-                                else -> "Disconnected"
-                            },
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            StatusPill(
+                                text = when {
+                                    state.connected -> "Connected"
+                                    state.connecting -> "Connecting…"
+                                    else -> "Disconnected"
+                                },
+                                positive = state.connected,
+                            )
+                        }
                     }
                 },
                 navigationIcon = {
@@ -178,7 +187,7 @@ fun SessionScreen(
                 },
                 actions = {
                     IconButton(onClick = { showSnippets = true }, enabled = state.connected) {
-                        Icon(Icons.AutoMirrored.Filled.LibraryBooks, contentDescription = "Command snippets")
+                        Icon(Icons.AutoMirrored.Filled.LibraryBooks, contentDescription = "Command snippets", tint = MaterialTheme.colorScheme.primary)
                     }
                     IconButton(onClick = { showModifierBar = !showModifierBar }, enabled = state.connected) {
                         Icon(
@@ -194,9 +203,9 @@ fun SessionScreen(
         },
     ) { inner ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(inner).background(Color(0xFF080C12)),
+            modifier = Modifier.fillMaxSize().padding(inner).background(MaterialTheme.colorScheme.background),
         ) {
-            if (state.connecting) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            if (state.connecting) LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primary)
 
             if (biometricError != null || state.statusMessage != null) {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
@@ -213,16 +222,25 @@ fun SessionScreen(
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }
-                        TextButton(onClick = { connectAttempt += 1 }) { Text("Reconnect") }
+                        TextButton(onClick = { connectAttempt += 1 }) { Text("Reconnect", fontWeight = FontWeight.Bold) }
                     }
                 }
             }
 
-            TerminalHost(
-                io = vm.shellIo,
-                onSession = vm::onSessionCreated,
-                modifier = Modifier.fillMaxWidth().weight(1f),
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(2.dp)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), MaterialTheme.shapes.extraSmall),
+            ) {
+                TerminalHost(
+                    io = vm.shellIo,
+                    onSession = vm::onSessionCreated,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
             if (showModifierBar && state.connected) {
                 ModifierBar(
                     ctrlArmed = state.ctrlArmed,
@@ -250,7 +268,7 @@ fun SessionScreen(
                     TextButton(onClick = {
                         vm.clearError()
                         connectAttempt += 1
-                    }) { Text("Retry") }
+                    }) { Text("Retry", fontWeight = FontWeight.Bold) }
                 }
             },
             dismissButton = {
@@ -261,7 +279,7 @@ fun SessionScreen(
                     }) { Text("Close") }
                 }
             },
-            title = { Text(if (state.connected) "Session problem" else "Couldn’t connect") },
+            title = { Text(if (state.connected) "Session Notice" else "Could Not Connect", fontWeight = FontWeight.Bold) },
             text = { Text(error) },
         )
     }
@@ -302,7 +320,7 @@ fun SessionScreen(
                         onBack()
                     }) { Text("OK") }
                 },
-                title = { Text("Verification timed out") },
+                title = { Text("Verification Timed Out", fontWeight = FontWeight.Bold) },
                 text = { Text("The fingerprint was not confirmed in time, so xSSH refused the connection.") },
             )
         else -> Unit
@@ -341,7 +359,7 @@ fun SessionScreen(
                 modifier = Modifier.fillMaxWidth().padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Text("Session settings", style = MaterialTheme.typography.titleLarge)
+                Text("Session Controls", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Row(
                     modifier =
                         Modifier.fillMaxWidth().toggleable(
@@ -354,9 +372,9 @@ fun SessionScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Require unlock before connecting", style = MaterialTheme.typography.titleSmall)
+                        Text("Require biometric unlock before connecting", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                         Text(
-                            "Applies to every future session open.",
+                            "Applies security gate to future connections.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -368,7 +386,7 @@ fun SessionScreen(
                     )
                 }
                 Text(
-                    "Tip: pinch the terminal to change text size. Long-press text to copy or paste.",
+                    "Pinch terminal screen to adjust text size. Long-press text to select, copy, or paste.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 20.dp),
@@ -380,18 +398,18 @@ fun SessionScreen(
     if (showCloseConfirmation) {
         AlertDialog(
             onDismissRequest = { showCloseConfirmation = false },
-            title = { Text("Close this session?") },
+            title = { Text("Disconnect Session?", fontWeight = FontWeight.Bold) },
             text = {
                 Text(
                     if (state.connected) {
-                        "The remote shell will disconnect immediately."
+                        "The remote SSH PTY channel will disconnect immediately."
                     } else {
-                        "The connection attempt will be cancelled."
+                        "The active connection attempt will be cancelled."
                     },
                 )
             },
-            dismissButton = { TextButton(onClick = { showCloseConfirmation = false }) { Text("Keep open") } },
-            confirmButton = { TextButton(onClick = ::closeSession) { Text("Disconnect") } },
+            dismissButton = { TextButton(onClick = { showCloseConfirmation = false }) { Text("Keep Open") } },
+            confirmButton = { TextButton(onClick = ::closeSession) { Text("Disconnect", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) } },
         )
     }
 }
@@ -410,14 +428,14 @@ private fun SnippetPasteSheet(
             modifier = Modifier.fillMaxWidth().padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Command snippets", style = MaterialTheme.typography.titleLarge)
+            Text("Command Snippets", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Text(
-                "Review a command before running it. Paste and run appends a newline.",
+                "Tap Paste to send command text, or Paste & Run to append a trailing newline.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (snippets.isEmpty()) {
-                Text("No snippets saved yet.", style = MaterialTheme.typography.bodyMedium)
+                Text("No snippets saved yet.", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 12.dp))
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(bottom = 24.dp),
@@ -425,19 +443,20 @@ private fun SnippetPasteSheet(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     items(snippets, key = { it.id }) { snippet ->
-                        Card(modifier = Modifier.fillMaxWidth()) {
+                        GlassCard {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                modifier = Modifier.fillMaxWidth().padding(14.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(snippet.label, style = MaterialTheme.typography.titleSmall)
+                                    Text(snippet.label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                                     Text(
                                         snippet.body,
                                         style =
                                             MaterialTheme.typography.bodySmall.copy(
                                                 fontFamily = FontFamily.Monospace,
                                             ),
+                                        color = MaterialTheme.colorScheme.primary,
                                         maxLines = 3,
                                         overflow = TextOverflow.Ellipsis,
                                     )
@@ -446,7 +465,7 @@ private fun SnippetPasteSheet(
                                     Icon(Icons.Filled.ContentPaste, contentDescription = "Paste ${snippet.label}")
                                 }
                                 IconButton(onClick = { onPasteAndRun(snippet) }) {
-                                    Icon(Icons.Filled.PlayArrow, contentDescription = "Paste and run ${snippet.label}")
+                                    Icon(Icons.Filled.PlayArrow, contentDescription = "Paste and run ${snippet.label}", tint = MaterialTheme.colorScheme.primary)
                                 }
                             }
                         }

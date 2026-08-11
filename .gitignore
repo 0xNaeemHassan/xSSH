@@ -15,3 +15,5 @@
 *.jks
 *.keystore
 !/keystore/README.md
+.kotlin/
+

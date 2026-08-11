@@ -1,6 +1,8 @@
 package com.xssh.feature.connections
 
 import android.text.format.DateUtils
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
@@ -44,14 +47,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.xssh.core.ssh.AuthMethod
 import com.xssh.core.ssh.SshConnectionProfile
+import com.xssh.design.components.CategoryTagChipGroup
 import com.xssh.design.components.DeleteConfirmationDialog
 import com.xssh.design.components.EmptyState
+import com.xssh.design.components.GlassCard
+import com.xssh.design.components.HeroDashboardBanner
 import com.xssh.design.components.PageContainer
 import com.xssh.design.components.StatusPill
 
@@ -66,15 +74,36 @@ fun ConnectionListScreen(
 ) {
     val state by vm.state.collectAsState()
     var pendingDelete by remember { mutableStateOf<SshConnectionProfile?>(null) }
+    var selectedTagFilter by remember { mutableStateOf<String?>(null) }
+
+    val allTags = remember(state.items) {
+        state.items.flatMap { it.tags }.distinctBy { it.lowercase() }
+    }
+    val filteredItems = remember(state.items, selectedTagFilter) {
+        val filter = selectedTagFilter
+        if (filter.isNull_or_empty()) {
+            state.items
+        } else {
+            state.items.filter { profile -> profile.tags.any { it.equals(filter, ignoreCase = true) } }
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text("xSSH", style = MaterialTheme.typography.titleLarge)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary),
+                            )
+                            Text("xSSH Workspace", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        }
                         Text(
-                            "Open. Fast. Private.",
+                            "Secure. Offline-first. Zero tracking.",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -86,16 +115,23 @@ fun ConnectionListScreen(
             ExtendedFloatingActionButton(
                 onClick = onNew,
                 icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                text = { Text("New connection") },
+                text = { Text("New Connection", fontWeight = FontWeight.Bold) },
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             )
         },
     ) { inner ->
         PageContainer(modifier = Modifier.fillMaxSize().padding(inner)) {
             Column(modifier = Modifier.fillMaxSize()) {
+                HeroDashboardBanner(
+                    connectionCount = state.items.size,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                )
+
                 OutlinedTextField(
                     value = state.query,
                     onValueChange = vm::onQueryChanged,
-                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                     trailingIcon = {
                         if (state.query.isNotEmpty()) {
                             IconButton(onClick = { vm.onQueryChanged("") }) {
@@ -103,11 +139,20 @@ fun ConnectionListScreen(
                             }
                         }
                     },
-                    placeholder = { Text("Search hosts, users, or names") },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                    placeholder = { Text("Search hosts, users, or profile labels…") },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                     singleLine = true,
                     shape = MaterialTheme.shapes.large,
                 )
+
+                if (allTags.isNotEmpty()) {
+                    CategoryTagChipGroup(
+                        tags = allTags,
+                        selectedTag = selectedTagFilter,
+                        onSelectTag = { selectedTagFilter = it },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
+                }
 
                 state.error?.let { message ->
                     Card(
@@ -131,22 +176,25 @@ fun ConnectionListScreen(
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator()
                         }
-                    state.items.isEmpty() && state.query.isNotBlank() ->
+                    filteredItems.isEmpty() && (state.query.isNotBlank() || selectedTagFilter != null) ->
                         EmptyState(
                             icon = Icons.Filled.Search,
                             title = "No matching connections",
-                            body = "Try a host, username, profile name, or a shorter search.",
-                            actionLabel = "Clear search",
-                            onAction = { vm.onQueryChanged("") },
+                            body = "Try clearing your search query or tag filter.",
+                            actionLabel = "Clear Filter",
+                            onAction = {
+                                vm.onQueryChanged("")
+                                selectedTagFilter = null
+                            },
                         )
-                    state.items.isEmpty() ->
+                    filteredItems.isEmpty() ->
                         EmptyState(
                             icon = Icons.Filled.Terminal,
                             title = "Your secure workspace starts here",
                             body =
-                                "Add a server profile. Credentials stay encrypted on this device " +
-                                    "and nothing is sent to a cloud account.",
-                            actionLabel = "Add first connection",
+                                "Add an SSH server profile. Secrets remain sealed in local hardware vault " +
+                                    "and zero telemetry is transmitted.",
+                            actionLabel = "Add First Connection",
                             onAction = onNew,
                         )
                     else ->
@@ -156,20 +204,19 @@ fun ConnectionListScreen(
                         ) {
                             item {
                                 Text(
-                                    "${state.items.size} ${if (state.items.size == 1) "connection" else "connections"}",
+                                    "${filteredItems.size} ${if (filteredItems.size == 1) "profile" else "profiles"}",
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(vertical = 4.dp),
+                                    fontWeight = FontWeight.SemiBold,
                                 )
                             }
-                            items(state.items, key = { it.id }) { profile ->
+                            items(filteredItems, key = { it.id }) { profile ->
                                 ConnectionCard(
                                     profile = profile,
                                     onConnect = {
                                         if (profile.username.isBlank()) {
-                                            onEdit(
-                                                profile.id,
-                                            )
+                                            onEdit(profile.id)
                                         } else {
                                             onOpenSession(profile.id)
                                         }
@@ -207,22 +254,21 @@ private fun ConnectionCard(
     onDelete: () -> Unit,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
-    Card(
-        onClick = onConnect,
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        border = CardDefaults.outlinedCardBorder(),
-    ) {
+    GlassCard(onClick = onConnect) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.primaryContainer) {
+            Surface(
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), MaterialTheme.shapes.medium),
+            ) {
                 Icon(
                     Icons.Filled.Terminal,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(12.dp).size(24.dp),
                 )
             }
@@ -230,11 +276,12 @@ private fun ConnectionCard(
                 Text(
                     profile.name,
                     style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    "${profile.username}@${profile.host}:${profile.port}",
+                    "${profile.username.ifBlank { "user" }}@${profile.host}:${profile.port}",
                     style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -244,7 +291,10 @@ private fun ConnectionCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    StatusPill(if (profile.username.isBlank()) "Needs username" else authLabel(profile.auth))
+                    StatusPill(
+                        text = if (profile.username.isBlank()) "Needs username" else authLabel(profile.auth),
+                        positive = profile.username.isNotBlank(),
+                    )
                     profile.lastUsedEpochMs?.let {
                         Text(
                             DateUtils.getRelativeTimeSpanString(it).toString(),
@@ -260,15 +310,15 @@ private fun ConnectionCard(
                 }
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                     DropdownMenuItem(
-                        text = { Text("Browse files") },
-                        leadingIcon = { Icon(Icons.Filled.Folder, contentDescription = null) },
+                        text = { Text("Browse Files (SFTP)") },
+                        leadingIcon = { Icon(Icons.Filled.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                         onClick = {
                             menuExpanded = false
                             onOpenSftp()
                         },
                     )
                     DropdownMenuItem(
-                        text = { Text("Edit") },
+                        text = { Text("Edit Profile") },
                         leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
                         onClick = {
                             menuExpanded = false
@@ -276,7 +326,7 @@ private fun ConnectionCard(
                         },
                     )
                     DropdownMenuItem(
-                        text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                        text = { Text("Delete Profile", color = MaterialTheme.colorScheme.error) },
                         leadingIcon = {
                             Icon(
                                 Icons.Filled.DeleteOutline,
@@ -298,7 +348,9 @@ private fun ConnectionCard(
 private fun authLabel(auth: AuthMethod): String =
     when (auth) {
         AuthMethod.Password -> "Password"
-        AuthMethod.PublicKey -> "Private key"
-        AuthMethod.Agent -> "Agent key"
+        AuthMethod.PublicKey -> "Private Key"
+        AuthMethod.Agent -> "Agent Key"
         AuthMethod.Interactive -> "Interactive"
     }
+
+private fun CharSequence?.isNull_or_empty(): Boolean = this == null || this.isEmpty()

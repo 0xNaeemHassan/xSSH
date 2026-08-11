@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Password
 import androidx.compose.material.icons.filled.Save
@@ -33,6 +35,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -53,6 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -61,6 +65,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.xssh.core.ssh.AuthMethod
 import com.xssh.core.ssh.SshConnectionProfile
 import com.xssh.core.ssh.TransportOptions
+import com.xssh.design.components.GlassCard
 import com.xssh.design.components.PageContainer
 import com.xssh.design.components.SectionCard
 import kotlinx.coroutines.Dispatchers
@@ -82,7 +87,6 @@ fun ConnectionEditScreen(
     var host by rememberSaveable { mutableStateOf("") }
     var port by rememberSaveable { mutableStateOf("22") }
     var user by rememberSaveable { mutableStateOf("") }
-    // Never place secrets in Android's saved-instance-state Bundle.
     var password by remember { mutableStateOf("") }
     var showPassword by rememberSaveable { mutableStateOf(false) }
     var keyPassphrase by remember { mutableStateOf("") }
@@ -217,7 +221,7 @@ fun ConnectionEditScreen(
             keepAliveNumber == null || keepAliveNumber !in 0..3600 -> "Keepalive must be between 0 and 3600 seconds."
             timeoutNumber == null || timeoutNumber !in 1..120 -> "Connect timeout must be between 1 and 120 seconds."
             parsedTags.size > 100 || parsedTags.any { tag -> tag.length > 128 || tag.any(Char::isISOControl) } ->
-                "Use at most 100 tags, each no longer than 128 characters and without control characters."
+                "Use at most 100 tags, each no longer than 128 characters."
             else -> null
         }
     val dirty = loaded && (snapshot() != initialSnapshot || password.isNotEmpty() || draftKeyBytes != null)
@@ -235,7 +239,7 @@ fun ConnectionEditScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (id == "new") "New connection" else "Edit connection") },
+                title = { Text(if (id == "new") "New Connection" else "Edit Connection", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = ::requestExit, enabled = !ui.saving) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -250,26 +254,31 @@ fun ConnectionEditScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 Text(
-                    if (id == "new") "Add a server" else "Connection details",
+                    if (id == "new") "Add a Server Profile" else "Connection Settings",
                     style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    "Secrets are encrypted with Android Keystore before they reach the local database.",
+                    "Credentials are encrypted locally with Android Keystore before reaching database storage.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
-                SectionCard("Server", subtitle = "Where xSSH should connect") {
-                    OutlinedTextField(name, {
-                        name = it.take(256)
-                    }, label = {
-                        Text(
-                            "Display name (optional)",
-                        )
-                    }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                    OutlinedTextField(host, {
-                        host = it.trim().take(253)
-                    }, label = { Text("Host or IP address") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                SectionCard("Server Endpoint", subtitle = "Destination hostname and port") {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it.take(256) },
+                        label = { Text("Display Label (optional)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                    OutlinedTextField(
+                        value = host,
+                        onValueChange = { host = it.trim().take(253) },
+                        label = { Text("Host or IP Address") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         OutlinedTextField(
                             user,
@@ -291,14 +300,14 @@ fun ConnectionEditScreen(
                     OutlinedTextField(
                         tagsText,
                         { tagsText = it.take(12_800) },
-                        label = { Text("Tags") },
-                        supportingText = { Text("Comma-separated, for example: production, web") },
+                        label = { Text("Tags (comma separated)") },
+                        supportingText = { Text("Example: production, web, staging") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                     )
                 }
 
-                SectionCard("Authentication", subtitle = "Choose how this server verifies you") {
+                SectionCard("Authentication", subtitle = "Choose how this server verifies your identity") {
                     AUTH_OPTIONS.forEach { option ->
                         AuthenticationOption(
                             auth = option,
@@ -328,7 +337,7 @@ fun ConnectionEditScreen(
                                 label = {
                                     Text(
                                         if (hasStoredPassword) {
-                                            "New password (blank keeps saved password)"
+                                            "New Password (blank keeps saved password)"
                                         } else {
                                             "Password"
                                         },
@@ -362,9 +371,9 @@ fun ConnectionEditScreen(
                                     onClick = { importKeyLauncher.launch(arrayOf("*/*")) },
                                     modifier = Modifier.weight(1f),
                                 ) {
-                                    Text("Import key")
+                                    Text("Import Key")
                                 }
-                                TextButton(
+                                OutlinedButton(
                                     onClick = {
                                         scope.launch {
                                             runCatching { vm.generateEd25519Draft(user.ifBlank { "xssh" }) }
@@ -373,7 +382,7 @@ fun ConnectionEditScreen(
                                                     draftKeyBytes = draft.privateKeyPem
                                                     draftKeyFingerprint = draft.fingerprintSha256
                                                     draftAuthorizedKey = draft.authorizedKey
-                                                    draftKeyLabel = "Generated Ed25519 key"
+                                                    draftKeyLabel = "Generated Ed25519 Key"
                                                 }
                                                 .onFailure { localError = it.message ?: "Key generation failed." }
                                         }
@@ -384,11 +393,12 @@ fun ConnectionEditScreen(
                             Text(
                                 draftKeyLabel
                                     ?: if (hasStoredPrivateKey) {
-                                        "Stored private key"
+                                        "Stored Private Key"
                                     } else {
                                         "No private key selected"
                                     },
                                 style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
                             )
                             (draftKeyFingerprint ?: storedKeyFingerprint)?.let {
                                 Text(
@@ -401,7 +411,7 @@ fun ConnectionEditScreen(
                                 OutlinedTextField(
                                     keyPassphrase,
                                     { keyPassphrase = it.take(4_096) },
-                                    label = { Text("Key passphrase (if required)") },
+                                    label = { Text("Key Passphrase (if encrypted)") },
                                     visualTransformation =
                                         if (showKeyPassphrase) {
                                             VisualTransformation.None
@@ -416,17 +426,8 @@ fun ConnectionEditScreen(
                                     trailingIcon = {
                                         IconButton(onClick = { showKeyPassphrase = !showKeyPassphrase }) {
                                             Icon(
-                                                if (showKeyPassphrase) {
-                                                    Icons.Filled.VisibilityOff
-                                                } else {
-                                                    Icons.Filled.Visibility
-                                                },
-                                                contentDescription =
-                                                    if (showKeyPassphrase) {
-                                                        "Hide passphrase"
-                                                    } else {
-                                                        "Show passphrase"
-                                                    },
+                                                if (showKeyPassphrase) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                                contentDescription = if (showKeyPassphrase) "Hide passphrase" else "Show passphrase",
                                             )
                                         }
                                     },
@@ -435,7 +436,7 @@ fun ConnectionEditScreen(
                                 )
                             } else if (hasStoredPrivateKey) {
                                 Text(
-                                    "Re-import the key to change its passphrase.",
+                                    "Re-import the key to update its passphrase.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -445,7 +446,7 @@ fun ConnectionEditScreen(
                                     it,
                                     {},
                                     readOnly = true,
-                                    label = { Text("Add this line to authorized_keys") },
+                                    label = { Text("Public Key (add to server's authorized_keys)") },
                                     minLines = 3,
                                     maxLines = 5,
                                     modifier = Modifier.fillMaxWidth(),
@@ -454,26 +455,18 @@ fun ConnectionEditScreen(
                         }
                         AuthMethod.Interactive ->
                             Text(
-                                "The server's prompts appear securely when you connect. No response is stored.",
+                                "The server's prompts will appear interactively when you connect.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                     }
                 }
 
-                SectionCard("Connection behavior", subtitle = "Reliability, privacy, and advanced SSH options") {
-                    ToggleRow("Compression", "Reduce traffic on slower links", compression) { compression = it }
-                    if (agentForwarding) {
-                        Text(
-                            "This imported profile requested agent forwarding, which is not supported " +
-                                "by the pinned SSH transport. It will remain disabled.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
+                SectionCard("Transport & Privacy", subtitle = "Keepalive, timeouts, and private session mode") {
+                    ToggleRow("Compression", "Reduce network bandwidth on slow connections", compression) { compression = it }
                     ToggleRow(
-                        "Private session",
-                        "Do not update recents or save a newly trusted host key",
+                        "Private Session Mode",
+                        "Do not record last-used timestamp or save unknown host keys",
                         ephemeral,
                     ) { ephemeral = it }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -540,16 +533,18 @@ fun ConnectionEditScreen(
                     },
                     enabled = validationError == null && loaded && !ui.saving,
                     modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                    shape = MaterialTheme.shapes.medium,
                 ) {
                     if (ui.saving) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp).padding(end = 4.dp),
+                            modifier = Modifier.size(18.dp).padding(end = 6.dp),
                             strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary,
                         )
-                        Text("Saving…")
+                        Text("Saving Connection…")
                     } else {
                         Icon(Icons.Filled.Save, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                        Text("Save connection")
+                        Text("Save Connection Profile", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -559,16 +554,16 @@ fun ConnectionEditScreen(
     if (showDiscardDialog) {
         AlertDialog(
             onDismissRequest = { showDiscardDialog = false },
-            title = { Text("Discard changes?") },
-            text = { Text("Your unsaved connection changes will be lost.") },
-            dismissButton = { TextButton(onClick = { showDiscardDialog = false }) { Text("Keep editing") } },
+            title = { Text("Discard Unsaved Changes?", fontWeight = FontWeight.Bold) },
+            text = { Text("Your unsaved connection profile changes will be lost.") },
+            dismissButton = { TextButton(onClick = { showDiscardDialog = false }) { Text("Keep Editing") } },
             confirmButton = {
                 TextButton(onClick = {
                     showDiscardDialog = false
                     clearDraftKey()
                     onDone()
                 }) {
-                    Text("Discard", color = MaterialTheme.colorScheme.error)
+                    Text("Discard", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                 }
             },
         )
@@ -586,45 +581,42 @@ private fun AuthenticationOption(
             AuthMethod.Password ->
                 Triple(
                     "Password",
-                    "Encrypted locally and used only at connect time",
+                    "Encrypted locally and used only at connection time",
                     Icons.Filled.Password,
                 )
             AuthMethod.PublicKey ->
                 Triple(
-                    "Private key",
+                    "Private Key",
                     "Authenticate directly with an imported or generated key",
                     Icons.Filled.Key,
                 )
             AuthMethod.Agent ->
                 Triple(
-                    "Agent key",
-                    "Sign the handshake with the encrypted in-app agent",
+                    "Agent Key",
+                    "Sign the SSH handshake using the encrypted in-app agent",
                     Icons.Filled.Security,
                 )
             AuthMethod.Interactive ->
                 Triple(
-                    "Keyboard-interactive",
-                    "Answer prompts supplied by the SSH server",
+                    "Keyboard-Interactive",
+                    "Answer dynamic challenge prompts sent by the SSH server",
                     Icons.Filled.Security,
                 )
         }
-    Card(
-        modifier = Modifier.fillMaxWidth().selectable(selected = selected, onClick = onSelect),
-        colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    if (selected) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.surface
-                    },
-            ),
-        border = CardDefaults.outlinedCardBorder(),
+    GlassCard(
+        onClick = onSelect,
+        containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surface,
+        borderColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
     ) {
-        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = null, modifier = Modifier.padding(end = 12.dp))
+        Row(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(end = 12.dp),
+            )
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleSmall)
+                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 Text(
                     body,
                     style = MaterialTheme.typography.bodySmall,
@@ -654,7 +646,7 @@ private fun ToggleRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
             Text(body, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Switch(checked = checked, onCheckedChange = null)

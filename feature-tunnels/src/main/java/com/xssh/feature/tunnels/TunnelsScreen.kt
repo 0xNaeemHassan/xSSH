@@ -4,15 +4,6 @@
  * Manages LOCAL / REMOTE / DYNAMIC (SOCKS5) port forwards backed by
  * [TunnelManager]. UI concerns only — all SSH-side logic lives in
  * TunnelManager / TunnelRepository.
- *
- * Design notes:
- *   • The bind-host field is locked to 127.0.0.1 by default. Toggling on
- *     "Expose on LAN (0.0.0.0)" shows a red warning; there is no silent path
- *     to a non-loopback bind.
- *   • Kind selector uses SegmentedButtonRow so the three modes are always
- *     visible — no hidden dropdown state.
- *   • Ports are stored as Int in the model; the TextField uses a String
- *     draft to allow transient empty values while typing.
  */
 package com.xssh.feature.tunnels
 
@@ -46,7 +37,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -72,6 +63,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -80,10 +73,12 @@ import com.xssh.core.ssh.Tunnel
 import com.xssh.design.components.ChangedHostKeyDialog
 import com.xssh.design.components.DeleteConfirmationDialog
 import com.xssh.design.components.EmptyState
+import com.xssh.design.components.GlassCard
 import com.xssh.design.components.KeyboardInteractiveDialog
 import com.xssh.design.components.PageContainer
 import com.xssh.design.components.StatusPill
 import com.xssh.design.components.UnknownHostKeyDialog
+import com.xssh.design.components.VisualTunnelDiagramCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,7 +96,7 @@ fun TunnelsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Tunnels") },
+                title = { Text("Port Forwards & Tunnels", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
@@ -114,9 +109,13 @@ fun TunnelsScreen(
         floatingActionButton = {
             val firstConn = state.connections.firstOrNull()
             if (firstConn != null) {
-                FloatingActionButton(onClick = { editing = vm.newTunnel(firstConn.id) }) {
-                    Icon(Icons.Filled.Add, contentDescription = "New tunnel")
-                }
+                ExtendedFloatingActionButton(
+                    onClick = { editing = vm.newTunnel(firstConn.id) },
+                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                    text = { Text("New Tunnel", fontWeight = FontWeight.Bold) },
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
             }
         },
     ) { inner ->
@@ -124,7 +123,7 @@ fun TunnelsScreen(
             Column(modifier = Modifier.fillMaxSize()) {
                 state.error?.let { error ->
                     Card(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
                     ) {
                         Row(
@@ -139,21 +138,21 @@ fun TunnelsScreen(
                 if (state.connections.isEmpty()) {
                     EmptyState(
                         icon = Icons.Filled.Warning,
-                        title = "A connection is required",
-                        body = "Add a server profile first, then return here to create secure forwards.",
+                        title = "Server Connection Required",
+                        body = "Add an SSH server profile first, then return here to configure port forwards.",
                     )
                 } else if (state.rows.isEmpty()) {
                     EmptyState(
                         icon = Icons.Filled.Add,
-                        title = "No tunnels yet",
-                        body = "Create a local, remote, or dynamic SOCKS5 forward.",
-                        actionLabel = "Create tunnel",
+                        title = "No Tunnels Configured",
+                        body = "Create a local (-L), remote (-R), or dynamic SOCKS5 (-D) port forward.",
+                        actionLabel = "Create Tunnel",
                         onAction = { editing = vm.newTunnel(state.connections.first().id) },
                     )
                 } else {
                     LazyColumn(
-                        contentPadding = PaddingValues(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 104.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         items(state.rows, key = { it.record.tunnel.id }) { row ->
                             TunnelRowCard(
@@ -221,7 +220,7 @@ fun TunnelsScreen(
                 AlertDialog(
                     onDismissRequest = vm::clearVerificationEvent,
                     confirmButton = { TextButton(onClick = vm::clearVerificationEvent) { Text("OK") } },
-                    title = { Text("Verification timed out") },
+                    title = { Text("Verification Timed Out", fontWeight = FontWeight.Bold) },
                     text = {
                         Text(
                             "The tunnel was not started because its server fingerprint was not confirmed in time.",
@@ -240,7 +239,6 @@ fun TunnelsScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TunnelRowCard(
     row: TunnelRow,
@@ -249,49 +247,47 @@ private fun TunnelRowCard(
     onDelete: () -> Unit,
 ) {
     val t = row.record.tunnel
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    GlassCard {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
                         row.record.label.ifBlank { defaultLabel(t) },
                         style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
                     )
                     Text(
                         "${kindLabel(t.kind)}  •  ${row.connectionName}",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
                     )
-                    Text(
-                        summaryLine(t),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    row.runtime.error?.let {
-                        Text(
-                            it,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
                 }
                 IconButton(onClick = onToggle) {
                     if (row.runtime.starting) {
                         CircularProgressIndicator(modifier = Modifier.padding(10.dp), strokeWidth = 2.dp)
                     } else if (row.runtime.running) {
-                        Icon(Icons.Filled.Stop, contentDescription = "Stop")
+                        Icon(Icons.Filled.Stop, contentDescription = "Stop", tint = MaterialTheme.colorScheme.error)
                     } else {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = "Start")
+                        Icon(Icons.Filled.PlayArrow, contentDescription = "Start", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
                 IconButton(onClick = onEdit) { Icon(Icons.Filled.Edit, contentDescription = "Edit") }
-                IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, contentDescription = "Delete") }
+                IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error) }
             }
-            if (row.runtime.running) {
-                StatusPill("Active on port ${row.runtime.boundPort ?: t.bindPort}", positive = true)
-            } else if (row.runtime.starting) {
-                StatusPill("Starting…")
+
+            VisualTunnelDiagramCard(
+                kind = kindLabel(t.kind),
+                bind = "${t.bindHost}:${t.bindPort}",
+                dest = if (t.kind == Tunnel.Kind.DYNAMIC) null else "${t.destHost}:${t.destPort}",
+                active = row.runtime.running,
+            )
+
+            row.runtime.error?.let {
+                Text(
+                    it,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
         }
     }
@@ -306,19 +302,9 @@ private fun kindLabel(k: Tunnel.Kind) =
 
 private fun defaultLabel(t: Tunnel): String =
     when (t.kind) {
-        Tunnel.Kind.LOCAL -> "-L ${t.bindHost}:${t.bindPort} → ${t.destHost}:${t.destPort}"
-        Tunnel.Kind.REMOTE -> "-R ${t.bindHost}:${t.bindPort} ← ${t.destHost}:${t.destPort}"
+        Tunnel.Kind.LOCAL -> "-L ${t.bindHost}:${t.bindPort} ➔ ${t.destHost}:${t.destPort}"
+        Tunnel.Kind.REMOTE -> "-R ${t.bindHost}:${t.bindPort} 🡨 ${t.destHost}:${t.destPort}"
         Tunnel.Kind.DYNAMIC -> "-D ${t.bindHost}:${t.bindPort} (SOCKS5)"
-    }
-
-private fun summaryLine(t: Tunnel): String =
-    when (t.kind) {
-        Tunnel.Kind.LOCAL ->
-            "listen ${t.bindHost}:${t.bindPort}  →  forward to ${t.destHost}:${t.destPort} via SSH"
-        Tunnel.Kind.REMOTE ->
-            "remote ${t.bindHost}:${t.bindPort} on server  →  ${t.destHost}:${t.destPort} on phone"
-        Tunnel.Kind.DYNAMIC ->
-            "SOCKS5 proxy on ${t.bindHost}:${t.bindPort}"
     }
 
 // --- Edit sheet ---------------------------------------------------------------
@@ -344,9 +330,6 @@ private fun TunnelEditSheet(
     var validationError by remember(initial.tunnel.id) { mutableStateOf<String?>(null) }
     var confirmDiscard by remember(initial.tunnel.id) { mutableStateOf(false) }
 
-    // React to the LAN-toggle change in a LaunchedEffect so we never mutate
-    // remembered state from the composition body — doing that used to cause
-    // a recomposition loop the moment the toggle flipped.
     LaunchedEffect(exposeOnLan) {
         bindHost =
             when {
@@ -378,8 +361,9 @@ private fun TunnelEditSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                if (initial.label.isNotBlank()) "Edit tunnel" else "New tunnel",
+                if (initial.label.isNotBlank()) "Edit Tunnel" else "New Port Forward",
                 style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
             )
 
             // Kind picker
@@ -389,7 +373,7 @@ private fun TunnelEditSheet(
                         selected = k == kind,
                         onClick = { kind = k },
                         shape = SegmentedButtonDefaults.itemShape(idx, Tunnel.Kind.entries.size),
-                    ) { Text(shortKind(k)) }
+                    ) { Text(shortKind(k), fontWeight = FontWeight.Bold) }
                 }
             }
 
@@ -413,7 +397,7 @@ private fun TunnelEditSheet(
                     value = bindHost,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text(if (kind == Tunnel.Kind.REMOTE) "Remote bind host" else "Local bind host") },
+                    label = { Text(if (kind == Tunnel.Kind.REMOTE) "Remote Bind Host" else "Local Bind Host") },
                     singleLine = true,
                     modifier = Modifier.weight(2f),
                 )
@@ -432,7 +416,7 @@ private fun TunnelEditSheet(
                     OutlinedTextField(
                         value = destHost,
                         onValueChange = { destHost = it.trim().take(253) },
-                        label = { Text(if (kind == Tunnel.Kind.LOCAL) "Dest host (remote)" else "Dest host (local)") },
+                        label = { Text(if (kind == Tunnel.Kind.LOCAL) "Dest Host (remote)" else "Dest Host (local)") },
                         singleLine = true,
                         modifier = Modifier.weight(2f),
                     )
@@ -458,7 +442,7 @@ private fun TunnelEditSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Switch(checked = exposeOnLan, onCheckedChange = null)
-                Text("Expose on LAN (0.0.0.0)", modifier = Modifier.padding(start = 8.dp))
+                Text("Expose on LAN (0.0.0.0)", modifier = Modifier.padding(start = 8.dp), fontWeight = FontWeight.SemiBold)
             }
             if (exposeOnLan) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -469,9 +453,9 @@ private fun TunnelEditSheet(
                     )
                     Text(
                         if (kind == Tunnel.Kind.REMOTE) {
-                            "  Anyone able to reach the SSH server may be able to reach this remote port."
+                            "  Anyone able to reach the SSH server may connect to this remote port."
                         } else {
-                            "  Anyone on your Wi-Fi/LAN will be able to reach this local port."
+                            "  Anyone on your local Wi-Fi/LAN will be able to reach this local port."
                         },
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
@@ -489,7 +473,7 @@ private fun TunnelEditSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Switch(checked = autoStart, onCheckedChange = null)
-                Text("Auto-start with app", modifier = Modifier.padding(start = 8.dp))
+                Text("Auto-start with app", modifier = Modifier.padding(start = 8.dp), fontWeight = FontWeight.SemiBold)
             }
 
             validationError?.let {
@@ -547,7 +531,7 @@ private fun TunnelEditSheet(
                             .onSuccess { onSave(TunnelRecord(it, label = label)) }
                             .onFailure { validationError = it.message ?: "Invalid tunnel" }
                     },
-                ) { Text("Save") }
+                ) { Text("Save Tunnel", fontWeight = FontWeight.Bold) }
             }
         }
     }
@@ -555,13 +539,13 @@ private fun TunnelEditSheet(
     if (confirmDiscard) {
         AlertDialog(
             onDismissRequest = { confirmDiscard = false },
-            title = { Text("Discard tunnel changes?") },
+            title = { Text("Discard Tunnel Changes?", fontWeight = FontWeight.Bold) },
             text = { Text("Your unsaved tunnel configuration will be lost.") },
             dismissButton = {
-                TextButton(onClick = { confirmDiscard = false }) { Text("Keep editing") }
+                TextButton(onClick = { confirmDiscard = false }) { Text("Keep Editing") }
             },
             confirmButton = {
-                TextButton(onClick = onDismiss) { Text("Discard", color = MaterialTheme.colorScheme.error) }
+                TextButton(onClick = onDismiss) { Text("Discard", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) }
             },
         )
     }
@@ -588,7 +572,7 @@ private fun ConnectionPicker(
             value = selectedName,
             onValueChange = {},
             readOnly = true,
-            label = { Text("Connection") },
+            label = { Text("Target SSH Connection") },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier =
                 Modifier
