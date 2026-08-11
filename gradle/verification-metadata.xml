@@ -7,6 +7,7 @@
          <trust file=".*-javadoc[.]jar" regex="true" reason="IDE downloaded javadoc JARs"/>
          <trust file=".*-sources[.]jar" regex="true" reason="IDE downloaded source JARs"/>
          <trust file="aapt2-.*[.]jar" regex="true" reason="Platform-dependent AAPT2 binary JARs"/>
+         <trust file=".*foojay-resolver-convention.*" regex="true" reason="Gradle toolchain resolver plugin"/>
       </trusted-artifacts>
    </configuration>
    <components>
