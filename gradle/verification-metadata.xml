@@ -6,6 +6,7 @@
       <trusted-artifacts>
          <trust file=".*-javadoc[.]jar" regex="true" reason="IDE downloaded javadoc JARs"/>
          <trust file=".*-sources[.]jar" regex="true" reason="IDE downloaded source JARs"/>
+         <trust file="aapt2-.*[.]jar" regex="true" reason="Platform-dependent AAPT2 binary JARs"/>
       </trusted-artifacts>
    </configuration>
    <components>
