@@ -90,11 +90,12 @@ fun XSshNavHost(navController: NavHostController) {
                                     fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                                 )
                             },
-                            colors = NavigationBarItemDefaults.colors(
-                                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                                selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                            ),
+                            colors =
+                                NavigationBarItemDefaults.colors(
+                                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                ),
                         )
                     }
                 }

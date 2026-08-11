@@ -4,7 +4,6 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,13 +12,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Password
 import androidx.compose.material.icons.filled.Save
@@ -28,8 +25,6 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -239,7 +234,12 @@ fun ConnectionEditScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (id == "new") "New Connection" else "Edit Connection", fontWeight = FontWeight.Bold) },
+                title = {
+                    Text(
+                        if (id == "new") "New Connection" else "Edit Connection",
+                        fontWeight = FontWeight.Bold,
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = ::requestExit, enabled = !ui.saving) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -426,8 +426,13 @@ fun ConnectionEditScreen(
                                     trailingIcon = {
                                         IconButton(onClick = { showKeyPassphrase = !showKeyPassphrase }) {
                                             Icon(
-                                                if (showKeyPassphrase) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                                contentDescription = if (showKeyPassphrase) "Hide passphrase" else "Show passphrase",
+                                                if (showKeyPassphrase) {
+                                                    Icons.Filled.VisibilityOff
+                                                } else {
+                                                    Icons.Filled.Visibility
+                                                },
+                                                contentDescription =
+                                                    if (showKeyPassphrase) "Hide passphrase" else "Show passphrase",
                                             )
                                         }
                                     },
@@ -463,7 +468,11 @@ fun ConnectionEditScreen(
                 }
 
                 SectionCard("Transport & Privacy", subtitle = "Keepalive, timeouts, and private session mode") {
-                    ToggleRow("Compression", "Reduce network bandwidth on slow connections", compression) { compression = it }
+                    ToggleRow(
+                        "Compression",
+                        "Reduce network bandwidth on slow connections",
+                        compression,
+                    ) { compression = it }
                     ToggleRow(
                         "Private Session Mode",
                         "Do not record last-used timestamp or save unknown host keys",
@@ -605,8 +614,22 @@ private fun AuthenticationOption(
         }
     GlassCard(
         onClick = onSelect,
-        containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surface,
-        borderColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+        containerColor =
+            if (selected) {
+                MaterialTheme.colorScheme.primaryContainer.copy(
+                    alpha = 0.5f,
+                )
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
+        borderColor =
+            if (selected) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.outlineVariant.copy(
+                    alpha = 0.5f,
+                )
+            },
     ) {
         Row(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(

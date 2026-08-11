@@ -21,8 +21,6 @@ import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.ImportExport
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -148,9 +146,20 @@ fun ConnectionTransferScreen(
                         modifier = Modifier.padding(18.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Icon(Icons.Filled.ImportExport, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Text("Migration & Backup Toolkit", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Icon(
+                                Icons.Filled.ImportExport,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(
+                                "Migration & Backup Toolkit",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                            )
                         }
                         Text(
                             "Export full xSSH metadata bundles, import prior backups, or migrate profiles from " +
@@ -170,7 +179,11 @@ fun ConnectionTransferScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = MaterialTheme.shapes.medium,
                         ) {
-                            Icon(Icons.Filled.FileUpload, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                            Icon(
+                                Icons.Filled.FileUpload,
+                                contentDescription = null,
+                                modifier = Modifier.padding(end = 8.dp),
+                            )
                             Text("Export xSSH Bundle (.json)", fontWeight = FontWeight.SemiBold)
                         }
                         OutlinedButton(
@@ -179,7 +192,11 @@ fun ConnectionTransferScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = MaterialTheme.shapes.medium,
                         ) {
-                            Icon(Icons.Filled.Upload, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                            Icon(
+                                Icons.Filled.Upload,
+                                contentDescription = null,
+                                modifier = Modifier.padding(end = 8.dp),
+                            )
                             Text("Export OpenSSH Config (.txt)", fontWeight = FontWeight.SemiBold)
                         }
                     }
@@ -193,7 +210,11 @@ fun ConnectionTransferScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = MaterialTheme.shapes.medium,
                         ) {
-                            Icon(Icons.Filled.FileDownload, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                            Icon(
+                                Icons.Filled.FileDownload,
+                                contentDescription = null,
+                                modifier = Modifier.padding(end = 8.dp),
+                            )
                             Text("Import xSSH Bundle", fontWeight = FontWeight.SemiBold)
                         }
                         OutlinedButton(
@@ -202,7 +223,11 @@ fun ConnectionTransferScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = MaterialTheme.shapes.medium,
                         ) {
-                            Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                            Icon(
+                                Icons.Filled.Download,
+                                contentDescription = null,
+                                modifier = Modifier.padding(end = 8.dp),
+                            )
                             Text("Import OpenSSH / JuiceSSH Config", fontWeight = FontWeight.SemiBold)
                         }
                     }
@@ -213,7 +238,10 @@ fun ConnectionTransferScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         if (state.busy) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
                                 CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                                 Text("Processing transfer…", style = MaterialTheme.typography.bodyMedium)
                             }
@@ -225,7 +253,11 @@ fun ConnectionTransferScreen(
                             )
                         }
                         state.details.forEach { detail ->
-                            Text("• $detail", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                "• $detail",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
                 }

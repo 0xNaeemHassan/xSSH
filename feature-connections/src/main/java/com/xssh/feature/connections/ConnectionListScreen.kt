@@ -76,31 +76,41 @@ fun ConnectionListScreen(
     var pendingDelete by remember { mutableStateOf<SshConnectionProfile?>(null) }
     var selectedTagFilter by remember { mutableStateOf<String?>(null) }
 
-    val allTags = remember(state.items) {
-        state.items.flatMap { it.tags }.distinctBy { it.lowercase() }
-    }
-    val filteredItems = remember(state.items, selectedTagFilter) {
-        val filter = selectedTagFilter
-        if (filter.isNull_or_empty()) {
-            state.items
-        } else {
-            state.items.filter { profile -> profile.tags.any { it.equals(filter, ignoreCase = true) } }
+    val allTags =
+        remember(state.items) {
+            state.items.flatMap { it.tags }.distinctBy { it.lowercase() }
         }
-    }
+    val filteredItems =
+        remember(state.items, selectedTagFilter) {
+            val filter = selectedTagFilter
+            if (filter.isNullOrEmpty()) {
+                state.items
+            } else {
+                state.items.filter { profile -> profile.tags.any { it.equals(filter, ignoreCase = true) } }
+            }
+        }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
                             Box(
-                                modifier = Modifier
-                                    .size(10.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary),
+                                modifier =
+                                    Modifier
+                                        .size(10.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.primary),
                             )
-                            Text("xSSH Workspace", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text(
+                                "xSSH Workspace",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                            )
                         }
                         Text(
                             "Secure. Offline-first. Zero tracking.",
@@ -131,7 +141,13 @@ fun ConnectionListScreen(
                 OutlinedTextField(
                     value = state.query,
                     onValueChange = vm::onQueryChanged,
-                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Filled.Search,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    },
                     trailingIcon = {
                         if (state.query.isNotEmpty()) {
                             IconButton(onClick = { vm.onQueryChanged("") }) {
@@ -263,7 +279,12 @@ private fun ConnectionCard(
             Surface(
                 shape = MaterialTheme.shapes.medium,
                 color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), MaterialTheme.shapes.medium),
+                modifier =
+                    Modifier.border(
+                        1.dp,
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                        MaterialTheme.shapes.medium,
+                    ),
             ) {
                 Icon(
                     Icons.Filled.Terminal,
@@ -311,7 +332,13 @@ private fun ConnectionCard(
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                     DropdownMenuItem(
                         text = { Text("Browse Files (SFTP)") },
-                        leadingIcon = { Icon(Icons.Filled.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Filled.Folder,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        },
                         onClick = {
                             menuExpanded = false
                             onOpenSftp()
@@ -352,5 +379,3 @@ private fun authLabel(auth: AuthMethod): String =
         AuthMethod.Agent -> "Agent Key"
         AuthMethod.Interactive -> "Interactive"
     }
-
-private fun CharSequence?.isNull_or_empty(): Boolean = this == null || this.isEmpty()

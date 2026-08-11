@@ -3,7 +3,6 @@
  */
 package com.xssh.design.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -44,7 +43,11 @@ fun UnknownHostKeyDialog(
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("First time connecting to:", style = MaterialTheme.typography.bodyMedium)
                 Text(hostPort, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text("Key type: $keyType", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    "Key type: $keyType",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 Surface(
                     shape = MaterialTheme.shapes.small,
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -129,7 +132,11 @@ fun ChangedHostKeyDialog(
                             )
                             Text(
                                 "Actual:   $actual",
-                                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold),
+                                style =
+                                    MaterialTheme.typography.bodySmall.copy(
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                    ),
                                 color = MaterialTheme.colorScheme.error,
                             )
                         }

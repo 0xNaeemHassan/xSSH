@@ -168,7 +168,11 @@ fun SftpBrowserScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Remote SFTP Browser", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Remote SFTP Browser",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
                         Text(
                             state.path,
                             style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
@@ -197,7 +201,11 @@ fun SftpBrowserScreen(
                         onClick = { openDocument.launch(arrayOf("*/*")) },
                         enabled = state.connected && !state.loading,
                     ) {
-                        Icon(Icons.Filled.Upload, contentDescription = "Upload file", tint = MaterialTheme.colorScheme.primary)
+                        Icon(
+                            Icons.Filled.Upload,
+                            contentDescription = "Upload file",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
                     }
                     IconButton(onClick = { vm.refresh() }, enabled = state.connected && !state.loading) {
                         Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
@@ -219,7 +227,10 @@ fun SftpBrowserScreen(
                 )
 
                 if (state.loading || state.externalEditorPreparing) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primary)
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primary,
+                    )
                 }
 
                 state.error?.let { error ->
@@ -238,7 +249,9 @@ fun SftpBrowserScreen(
                                     Icon(Icons.Filled.Close, contentDescription = "Dismiss error")
                                 }
                             } else {
-                                TextButton(onClick = { vm.reconnect(connectionId) }) { Text("Retry", fontWeight = FontWeight.Bold) }
+                                TextButton(
+                                    onClick = { vm.reconnect(connectionId) },
+                                ) { Text("Retry", fontWeight = FontWeight.Bold) }
                             }
                         }
                     }
@@ -252,7 +265,11 @@ fun SftpBrowserScreen(
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(transfer.label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        transfer.label,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                    )
                                     Text(
                                         if (transfer.totalBytes > 0) {
                                             "${Formatter.formatFileSize(
@@ -283,7 +300,10 @@ fun SftpBrowserScreen(
                                     color = MaterialTheme.colorScheme.primary,
                                 )
                             } else {
-                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primary)
+                                LinearProgressIndicator(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
                             }
                         }
                     }
@@ -550,17 +570,18 @@ private fun PathBreadcrumbBar(
     onNavigateTo: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val segments = remember(path) {
-        val parts = path.split('/').filter(String::isNotEmpty)
-        val list = mutableListOf<Pair<String, String>>()
-        list.add("Root" to "/")
-        var current = ""
-        parts.forEach { part ->
-            current += "/$part"
-            list.add(part to current)
+    val segments =
+        remember(path) {
+            val parts = path.split('/').filter(String::isNotEmpty)
+            val list = mutableListOf<Pair<String, String>>()
+            list.add("Root" to "/")
+            var current = ""
+            parts.forEach { part ->
+                current += "/$part"
+                list.add(part to current)
+            }
+            list
         }
-        list
-    }
     LazyRow(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -573,7 +594,12 @@ private fun PathBreadcrumbBar(
             ) {
                 Surface(
                     shape = MaterialTheme.shapes.small,
-                    color = if (target == path) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+                    color =
+                        if (target == path) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerHigh
+                        },
                     modifier = Modifier.clickable { onNavigateTo(target) },
                 ) {
                     Row(
@@ -582,9 +608,18 @@ private fun PathBreadcrumbBar(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         if (name == "Root") {
-                            Icon(Icons.Filled.Home, contentDescription = "Root", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+                            Icon(
+                                Icons.Filled.Home,
+                                contentDescription = "Root",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(14.dp),
+                            )
                         } else {
-                            Text(name, style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace), fontWeight = FontWeight.SemiBold)
+                            Text(
+                                name,
+                                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                                fontWeight = FontWeight.SemiBold,
+                            )
                         }
                     }
                 }
@@ -620,17 +655,35 @@ private fun FileRow(
     ) {
         Surface(
             shape = MaterialTheme.shapes.medium,
-            color = if (entry.isDir) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceContainerHigh,
+            color =
+                if (entry.isDir) {
+                    MaterialTheme.colorScheme.primaryContainer.copy(
+                        alpha = 0.5f,
+                    )
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHigh
+                },
         ) {
             Icon(
                 if (entry.isDir) Icons.Filled.Folder else Icons.AutoMirrored.Filled.InsertDriveFile,
                 contentDescription = null,
-                tint = if (entry.isDir) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                tint =
+                    if (entry.isDir) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                 modifier = Modifier.padding(10.dp).size(22.dp),
             )
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(entry.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                entry.name,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             Text(
                 if (entry.isDir) {
                     "Folder"
@@ -653,7 +706,13 @@ private fun FileRow(
                 if (!entry.isDir) {
                     DropdownMenuItem(
                         text = { Text("Download") },
-                        leadingIcon = { Icon(Icons.Filled.Download, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Filled.Download,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        },
                         onClick = {
                             expanded = false
                             onDownload()
@@ -750,7 +809,12 @@ private fun TransferQueueSection(
     GlassCard(modifier = modifier) {
         Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Transfer Queue", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Text(
+                    "Transfer Queue",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
                 if (finished > 0) TextButton(onClick = onClearFinished) { Text("Clear Finished") }
             }
             queue.take(4).forEach { item ->
@@ -792,7 +856,11 @@ private fun TransferQueueSection(
                 }
             }
             if (queue.size > 4) {
-                Text("${queue.size - 4} more queued transfers", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    "${queue.size - 4} more queued transfers",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

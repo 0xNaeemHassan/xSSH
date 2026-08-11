@@ -374,7 +374,8 @@ class SessionViewModel
 
         fun pasteFromClipboard(context: android.content.Context) {
             if (!_state.value.connected) return
-            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager ?: return
+            val manager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+            val clipboard = manager as? android.content.ClipboardManager ?: return
             val item = clipboard.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0) ?: return
             val text = item.coerceToText(context)?.toString().orEmpty()
             if (text.isNotEmpty()) {

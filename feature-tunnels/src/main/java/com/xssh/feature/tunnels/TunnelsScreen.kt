@@ -63,7 +63,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -76,7 +75,6 @@ import com.xssh.design.components.EmptyState
 import com.xssh.design.components.GlassCard
 import com.xssh.design.components.KeyboardInteractiveDialog
 import com.xssh.design.components.PageContainer
-import com.xssh.design.components.StatusPill
 import com.xssh.design.components.UnknownHostKeyDialog
 import com.xssh.design.components.VisualTunnelDiagramCard
 
@@ -268,11 +266,17 @@ private fun TunnelRowCard(
                     } else if (row.runtime.running) {
                         Icon(Icons.Filled.Stop, contentDescription = "Stop", tint = MaterialTheme.colorScheme.error)
                     } else {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = "Start", tint = MaterialTheme.colorScheme.primary)
+                        Icon(
+                            Icons.Filled.PlayArrow,
+                            contentDescription = "Start",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
                     }
                 }
                 IconButton(onClick = onEdit) { Icon(Icons.Filled.Edit, contentDescription = "Edit") }
-                IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error) }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                }
             }
 
             VisualTunnelDiagramCard(
@@ -442,7 +446,11 @@ private fun TunnelEditSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Switch(checked = exposeOnLan, onCheckedChange = null)
-                Text("Expose on LAN (0.0.0.0)", modifier = Modifier.padding(start = 8.dp), fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Expose on LAN (0.0.0.0)",
+                    modifier = Modifier.padding(start = 8.dp),
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
             if (exposeOnLan) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -545,7 +553,9 @@ private fun TunnelEditSheet(
                 TextButton(onClick = { confirmDiscard = false }) { Text("Keep Editing") }
             },
             confirmButton = {
-                TextButton(onClick = onDismiss) { Text("Discard", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) }
+                TextButton(onClick = onDismiss) {
+                    Text("Discard", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                }
             },
         )
     }

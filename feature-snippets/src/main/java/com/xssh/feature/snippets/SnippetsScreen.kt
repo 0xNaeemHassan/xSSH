@@ -110,7 +110,13 @@ fun SnippetsScreen(
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Filled.Search,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    },
                     trailingIcon = {
                         if (query.isNotEmpty()) {
                             IconButton(onClick = { query = "" }) {
@@ -141,7 +147,9 @@ fun SnippetsScreen(
                         EmptyState(
                             icon = Icons.Filled.Code,
                             title = "Save Frequently Used Commands",
-                            body = "Snippets stay on device and can be reviewed before pasting into an active SSH session.",
+                            body =
+                                "Snippets stay on device and can be reviewed " +
+                                    "before pasting into an active SSH session.",
                             actionLabel = "Create Snippet",
                             onAction = { editing = vm.blank() },
                         )
@@ -160,7 +168,11 @@ fun SnippetsScreen(
                                             modifier = Modifier.weight(1f),
                                             verticalArrangement = Arrangement.spacedBy(6.dp),
                                         ) {
-                                            Text(snippet.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                            Text(
+                                                snippet.label,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                            )
                                             Text(
                                                 snippet.body,
                                                 style =
@@ -296,8 +308,16 @@ private fun SnippetEditSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Execute immediately on paste", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                    Text("Appends a trailing newline to auto-run the command.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "Execute immediately on paste",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        "Appends a trailing newline to auto-run the command.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
                 Switch(checked = execute, onCheckedChange = null)
             }
@@ -330,7 +350,9 @@ private fun SnippetEditSheet(
                 TextButton(onClick = { confirmDiscard = false }) { Text("Keep Editing") }
             },
             confirmButton = {
-                TextButton(onClick = onDismiss) { Text("Discard", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) }
+                TextButton(onClick = onDismiss) {
+                    Text("Discard", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                }
             },
         )
     }
