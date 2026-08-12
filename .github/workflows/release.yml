@@ -43,7 +43,10 @@ jobs:
           sha256sum release_out/*.apk > release_out/SHA256SUMS
 
       - name: Verify 16 KiB native compatibility
-        run: python3 scripts/verify_native_alignment.py release_out/*.apk
+        run: |
+          for apk in release_out/*.apk; do
+            python3 scripts/verify_native_alignment.py "$apk"
+          done
 
       - name: Stage release artifacts
         uses: actions/upload-artifact@v4

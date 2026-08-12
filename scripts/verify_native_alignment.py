@@ -112,17 +112,20 @@ def verify(apk: Path) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("apk", type=Path)
+    parser.add_argument("apks", type=Path, nargs="+")
     args = parser.parse_args()
-    try:
-        if not args.apk.is_file():
-            raise ValueError(f"APK not found: {args.apk}")
-        verify(args.apk)
-    except (OSError, ValueError, zipfile.BadZipFile) as error:
-        print(f"native alignment verification failed: {error}", file=sys.stderr)
-        return 1
-    print("native alignment verification: OK")
-    return 0
+    failed = False
+    for apk in args.apks:
+        try:
+            if not apk.is_file():
+                raise ValueError(f"APK not found: {apk}")
+            print(f"Verifying native alignment for {apk.name}...")
+            verify(apk)
+            print(f"native alignment verification for {apk.name}: OK")
+        except (OSError, ValueError, zipfile.BadZipFile) as error:
+            print(f"native alignment verification failed for {apk.name}: {error}", file=sys.stderr)
+            failed = True
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":
